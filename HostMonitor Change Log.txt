@@ -1,0 +1,21 @@
+HostMonitor Change Log
+10/6/16
+    Moved CheckHosts to function (global func)
+    Implemented settings menu
+    Implemented remembering window pos & setting
+    Added Reload option to File menu
+    Update About window (still not really done properly)
+    Corrected for localizations that have a space after ping times (PingMsg.ahk line 55)
+    Moved settings.xml to inc folder
+    Added transform.xslt to inc folder
+    Added LoadXML()
+    Added SaveSettings()
+    Changed reading of settings.xml to use LoadXML()
+    Changed settings to work directly in xml doc rather than a secondary object
+    Removed settings array from debug command as a result of the above change
+    Implemented saving settings using SaveSettings()
+    Added checking to ensure setting for rows doesn't exceed monitor area (guiRows > maxRows)
+    Implemented AutoTraceRt
+10/7/16
+    Added Grendahl's flushdns script & settings menu entry
+    Added threads array to track thread counts and ids better
