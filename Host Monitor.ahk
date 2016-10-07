@@ -135,6 +135,7 @@ Menu, SettingsMenu, Add, Change GUI &Rows, SettingsMenuHandler
 Menu, SettingsMenu, Add, Change Max &Threads, SettingsMenuHandler
 Menu, SettingsMenu, Add, Change Check &Interval, SettingsMenuHandler
 Menu, SettingsMenu, Add, Change Ping &Average Count, SettingsMenuHandler
+Menu, SettingsMenu, Add, Change &Warning Latency, SettingsMenuHandler
 
 ;Menu Bar
 Menu, MenuBar, Add, &File, :FileMenu
@@ -201,7 +202,6 @@ scanTimer := settings.selectSingleNode("/hostMonitor/settings/checkInterval").te
 SetTimer, UpdateSB, 1000
 
 ;<=====  Main  ================================================================>
-threads := Object()
 CheckHosts()
 
 ;<=====  End AutoExecute  =====================================================>
@@ -278,6 +278,7 @@ MenuHandler:
     return
 
 SettingsMenuHandler:
+    reloadScript := false
     if (A_ThisMenuItem == "&Flush DNS"){
         if A_IsCompiled
             Run, % A_ScriptDir . "\inc\flushdns.exe"
@@ -364,15 +365,21 @@ SettingsMenuHandler:
         ifMsgBox, Yes
             reloadScript := true
     }
+    else if (A_ThisMenuItem == "Change &Warning Latency"){
+        InputBox, userInput, Change Ping Average Count, % "Enter a high latency warning level."
+        if userInput is not integer
+        {
+            MsgBox, This setting can only take an integer.
+            return
+        }
+        node := settings.selectSingleNode("/hostMonitor/settings/warnLatency")
+        node.text := userInput
+    }
     else
         MsgBox, % "Settings menu system broke :("
     SaveSettings(settings, tdoc)
     if reloadScript
         Reload
-    return
-
-ThreadDelay:
-    SetTimer, UpdateSB, On
     return
 
 UpdateSB:
@@ -392,14 +399,12 @@ CheckHosts(){
     SB_SetText("Scan in progress...", 3)
     onlineCount := 0
     offlineCount := 0
+    threads := Object()
     Loop, % hosts.MaxIndex()
     {
         ;Wait for free thread
         while (threads.MaxIndex() >= settings.selectSingleNode("/hostMonitor/settings/maxThreads").text)
             sleep, 250
-
-        ;Indicate that host is being checked
-        GuiControl,, % hosts[A_Index, "bgImageID"], % "HBITMAP:*" hYellow
 
         ;Start thread to check host
         if A_IsCompiled {
@@ -422,10 +427,11 @@ CheckHosts(){
     }
     scanTimer := settings.selectSingleNode("/hostMonitor/settings/checkInterval").text
     SetTimer, CheckHosts, On
-    SetTimer, ThreadDelay, 30000
+    SetTimer, UpdateSB, On
+    SetTimer, StaleThreads, % (((settings.selectSingleNode("/hostMonitor/settings/checkInterval").text) / 2) * 1000)
 }
 
-LoadXML(file) {
+LoadXML(file){
     xmlFile := fileOpen(file, "r")
     xml := xmlFile.read()
     xmlFile.Close()
@@ -449,10 +455,9 @@ Receive_WM_COPYDATA(wParam, lParam){
     reply := StrSplit(CopyOfData, "|")
 
     ;Clear thread from threads array
-    tid := hosts[reply[1], "threadID"]
     Loop, % threads.MaxIndex()
     {
-        if (threads[A_Index] == tid)
+        if (threads[A_Index] == hosts[reply[1], "threadID"])
             threads.removeAt(A_Index)
     }
 
@@ -460,28 +465,62 @@ Receive_WM_COPYDATA(wParam, lParam){
     if (reply[3] != "TIMEOUT")
     {
         ;Good return
-        FormatTime, scanTime, A_Now, HH:mm
-        GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hGreen
+        ;Check if host's ping array is full, remove oldest element if so
         if (hosts[reply[1]].pingArray.getCapacity() == settings.selectSingleNode("/hostMonitor/settings/pingAvgCount").text)
             hosts[reply[1]].pingArray.RemoveAt(1)
+
+        ;Add new ping time to array
         hosts[reply[1]].pingArray.Push(strReplace(reply[3], "ms"))
+
+        ;Update host's ip element
         hosts[reply[1], "ip"] := reply[4]
+
+        ;Update host's lastSeen element
+        hosts[reply[1], "lastSeen"] := A_Hour . ":" . A_Min
+
+        ;Calculate average ping time from array
         sum := 0
         for each, ping in hosts[reply[1]].pingArray
             sum += ping
         avg := floor(sum/hosts[reply[1]].pingArray.getCapacity())
         SetFormat, FloatFast, 0.0
+
+        ;Update BGImage. Yellow if above warnLatency, green otherwise
+        if (strReplace(reply[3], "ms") >= settings.selectSingleNode("/hostMonitor/settings/warnLatency").text)
+        {
+            GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hYellow
+            ;GuiControl,, % hosts[reply[1], "statusTextID"], % reply[3] . " >= " . settings.selectSingleNode("/hostMonitor/settings/warnLatency").text
+        }
+        else
+        {
+            GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hGreen
+            ;GuiControl,, % hosts[reply[1], "statusTextID"], % reply[3] . " < " . settings.selectSingleNode("/hostMonitor/settings/warnLatency").text
+        }
+
+        ;Update status text
         GuiControl,, % hosts[reply[1], "statusTextID"], % reply[3] . " (" . avg . "ms)"
-        hosts[reply[1], "lastSeen"] := scanTime
+
+        ;Increment onlineCount variable
         onlineCount++
     } else {
         ;Timeout
-        GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hRed
+        ;Check if host's ping array is full, remove oldest element if so
         if (hosts[reply[1]].pingArray.getCapacity() == settings.selectSingleNode("/hostMonitor/settings/pingAvgCount").text)
             hosts[reply[1]].pingArray.RemoveAt(1)
+
+        ;Add new ping time to array
         hosts[reply[1]].pingArray.Push(9999)
+
+        ;Update BGImage to red
+        GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hRed
+
+        ;Update status text
         GuiControl,, % hosts[reply[1], "statusTextID"], % "Last Seen: " . hosts[reply[1], "lastSeen"]
+
+        ;Increment offlineCount variable
         offlineCount++
+
+        ;Start tracert if autoTraceRt is enabled in settings
         if settings.selectSingleNode("/hostMonitor/settings/autoTraceRt").text
            StartTrace(hosts[reply[1], "name"])
     }
@@ -491,10 +530,12 @@ Receive_WM_COPYDATA(wParam, lParam){
         SetTimer, UpdateSB, On
     else
         SB_SetText(threads.MaxIndex() . " threads active", 3)
+
+    ;Done...
     return true
 }
 
-SaveSettings(settings, tdoc) {
+SaveSettings(settings, tdoc){
     try {
         resultDoc := ComObjCreate("MSXML2.DOMdocument.6.0")
         settings.transformNodeToObject(tdoc, resultDoc)
@@ -505,6 +546,33 @@ SaveSettings(settings, tdoc) {
         return 0
     }
     return 1
+}
+
+StaleThreads(){
+    Global
+    ;Loop hosts array
+    for host in hosts
+    {
+        ;Store index in hostID for use in nested loop
+        hostID := A_Index
+
+        ;Get host thread ID
+        hostThreadID := hosts[hostID, "threadID"]
+
+        ;Check if hosts threadID is still in the threads array
+        for each, tid in threads
+        {
+            ;if found, color the BG yellow & set text
+            if (hostThreadID == tid)
+            {
+                GuiControl,, % hosts[hostID, "bgImageID"], % "HBITMAP:*" hYellow
+                GuiControl,, % hosts[hostID, "statusTextID"], % "Thread lost..."
+                threads.RemoveAt(A_Index)
+            }
+        }
+    }
+    ;Release threads array
+    ObjRelease(threads)
 }
 
 StartTrace(host){

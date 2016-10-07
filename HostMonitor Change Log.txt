@@ -19,3 +19,8 @@ HostMonitor Change Log
 10/7/16
     Added Grendahl's flushdns script & settings menu entry
     Added threads array to track thread counts and ids better
+    Added warnLatency setting.
+    Changed yellow to indicate that a host's ping was over the warnLatency value or the thread did not return
+    Commented Receive_WM_COPYDATA() & rearranged some of its internals
+    Added StaleHosts() which changes BGImages to yellow if the thread never returned or was missed.
+

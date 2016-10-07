@@ -9,7 +9,8 @@
 		<logTraceRt>0</logTraceRt>
 		<logPings>0</logPings>
 		<rememberPos>1</rememberPos>
-		<winX>0</winX>
-		<winY>1</winY>
+		<winX>-955</winX>
+		<winY>12</winY>
+		<warnLatency>60</warnLatency>
 	</settings>
 </hostMonitor>
