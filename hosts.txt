@@ -1,0 +1,4 @@
+www.google.com
+www.yahoo.com
+amazon.com
+speedtest.net
