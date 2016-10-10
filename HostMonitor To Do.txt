@@ -4,7 +4,6 @@ Implement option to edit hosts file
 Do a proper about window
 From https://autohotkey.com/boards/viewtopic.php?f=6&t=23378&p=112339#p112339 :
     Look into adding graph on main window
-    Look into changning yellow to indicate something more useful than refresh (possible if latency above user setting)
 Improve tracert script for gracefully handling when there is no name resolution instead of just dying
 Implement logging (failures/high latency in main script, full in graph script if enabled)
 PingAvg setting to not require reload
