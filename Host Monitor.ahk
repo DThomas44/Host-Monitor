@@ -1,25 +1,14 @@
 /*
     Host Monitor.ahk
-    Author: Daniel Thomas
-    Date: 10/6/2016
+    Authors: Elesar (Daniel Thomas) & Grendahl
+
+    Uses functions by SKAN, just me, Uberi & jNizM
 
     Monitors a set of hosts periodically and gives visual representation of their status.
     Includes several tools for troubleshooting.
 
     Some functionality depends on putty.exe being in the inc folder.
 
-    To Do:
-        Implement option to edit hosts file
-        Do a proper about window
-        Add checking for putty.exe and prompting to download if not found
-        From https://autohotkey.com/boards/viewtopic.php?f=6&t=23378&p=112339#p112339 :
-            Look into adding graph on main window
-            Look into changning yellow to indicate something more useful than refresh (possible if latency above user setting)
-        Improve tracert script for gracefully handling when there is no name resolution instead of just dying
-        Implement logging (failures/high latency in main script, full in graph script if enabled)
-        Change MaxThreads, CheckInterval & PingAvg settings to not require reload
-        Implement latency warning setting (change color to yellow if above setting)
-        Correct timing issues with countdown and scan (scanning 5+ seconds early on home system)
 */
 ;<=====  System Settings  =====================================================>
 #SingleInstance, Force
@@ -30,10 +19,6 @@ SetBatchLines, -1
 ;Receive messages from slave scripts and Windows
 OnMessage(0x4a, "Receive_WM_COPYDATA")
 OnMessage(0x200, "WM_MOUSEMOVE") ; Tooltips
-
-;Allcate console so we don't have constant flashing windows while pinging
-DllCall("AllocConsole")
-WinHide % "ahk_id " DllCall("GetConsoleWindow", "ptr")
 
 ;Make sure we are exiting nicely
 OnExit, Exit
@@ -279,11 +264,11 @@ MenuHandler:
 
 SettingsMenuHandler:
     reloadScript := false
-    if (A_ThisMenuItem == "&Flush DNS"){
-        if A_IsCompiled
-            Run, % A_ScriptDir . "\inc\flushdns.exe"
+    if (A_ThisMenuItem == "&Flush DNS") {
+        if FlushDNS()
+            MsgBox, % "DNS cache flushed."
         else
-            Run, % A_ScriptDir . "\inc\flushdns.ahk"
+            MsgBox, % "Failed to flush DNS cache."
     }
     else if (A_ThisMenuItem == "&Ping Logging"){
         Menu, SettingsMenu, ToggleCheck, &Ping Logging
@@ -331,9 +316,6 @@ SettingsMenuHandler:
             userInput := 1
         node := settings.selectSingleNode("/hostMonitor/settings/maxThreads")
         node.text := userInput
-        MsgBox, 4,,% "Setting changed. This setting requires a script reload.`nReload now?"
-        ifMsgBox, Yes
-            reloadScript := true
     }
     else if (A_ThisMenuItem == "Change Check &Interval"){
         InputBox, userInput, Change Check Interval, % "Enter a check interval in seconds.`nSuggest 30 or higher."
@@ -346,9 +328,6 @@ SettingsMenuHandler:
             userInput := 1
         node := settings.selectSingleNode("/hostMonitor/settings/checkInterval")
         node.text := userInput
-        MsgBox, 4,,% "Setting changed. This setting requires a script reload.`nReload now?"
-        ifMsgBox, Yes
-            reloadScript := true
     }
     else if (A_ThisMenuItem == "Change Ping &Average Count"){
         InputBox, userInput, Change Ping Average Count, % "Enter an averaging count.`nSuggest 10 - 50."
@@ -426,9 +405,19 @@ CheckHosts(){
         SB_SetText(threads.MaxIndex() . " threads active", 3)
     }
     scanTimer := settings.selectSingleNode("/hostMonitor/settings/checkInterval").text
-    SetTimer, CheckHosts, On
+    SetTimer, CheckHosts, % (settings.selectSingleNode("/hostMonitor/settings/checkInterval").text * 1000)
     SetTimer, UpdateSB, On
     SetTimer, StaleThreads, % (((settings.selectSingleNode("/hostMonitor/settings/checkInterval").text) / 2) * 1000)
+}
+
+;FlushDNS by jNizM
+FlushDNS(){
+    if !(DllCall("dnsapi.dll\DnsFlushResolverCache"))
+    {
+        throw Exception("DnsFlushResolverCache", -1)
+        return 0
+    }
+    return 1
 }
 
 LoadXML(file){

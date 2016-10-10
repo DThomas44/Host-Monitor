@@ -23,7 +23,7 @@ hostID = %3%
 
 ;<=====  Main  ================================================================>
 result := Object()
-if !Ping4(host, result, 1500) {
+if !Ping4(host, result, 2500) {
     reply := hostID . "||TIMEOUT"
 } else {
     reply := hostID . "|" . result.Name . "|" . result.RTTime . "ms|" . result.IPAddr

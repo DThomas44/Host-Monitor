@@ -24,3 +24,11 @@ HostMonitor Change Log
     Commented Receive_WM_COPYDATA() & rearranged some of its internals
     Added StaleHosts() which changes BGImages to yellow if the thread never returned or was missed.
 
+10/10/16
+    Changed PingMsg.ahk to use the Ping4 function by just me and Uberi
+    Added FlushDNS() by jNizM and removed the flushdns.ahk file
+    Removed reload requirement for changing maxThreads setting
+    Removed reload requirement for changing checkInterval setting
+    Removed console allocation in main script and PingMsg.ahk as it is not needed with the use of FlushDNS() and Ping4()
+    Moved ToDo list to standalone text file
+    Added screenshots for use in README.md
