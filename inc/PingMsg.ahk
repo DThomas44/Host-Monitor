@@ -130,7 +130,7 @@ Send_WM_COPYDATA(ByRef StringToSend, ByRef TargetScriptTitle){
     Prev_TitleMatchMode := A_TitleMatchMode
     DetectHiddenWindows On
     SetTitleMatchMode 2
-    SendMessage, 0x4a, 0, &CopyDataStruct,, %TargetScriptTitle%
+    SendMessage, 0x4a, 0, &CopyDataStruct,, %TargetScriptTitle%,,,, 10000
     DetectHiddenWindows %Prev_DetectHiddenWindows%
     SetTitleMatchMode %Prev_TitleMatchMode%
     return ErrorLevel

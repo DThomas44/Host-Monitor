@@ -32,3 +32,6 @@ HostMonitor Change Log
     Removed console allocation in main script and PingMsg.ahk as it is not needed with the use of FlushDNS() and Ping4()
     Moved ToDo list to standalone text file
     Added screenshots for use in README.md
+    Improved reliability of messages:
+        Added Critical to Receive_WM_COPYDATA()
+        Increased timeout of SendMessage in PingMsg.ahk from 5000 to 10000ms
