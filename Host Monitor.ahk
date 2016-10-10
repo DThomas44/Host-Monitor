@@ -437,6 +437,7 @@ LoadXML(file){
 
 Receive_WM_COPYDATA(wParam, lParam){
     Global
+    Critical
     StringAddress := NumGet(lParam + 2*A_PtrSize)
     CopyOfData := StrGet(StringAddress)
 
