@@ -46,7 +46,23 @@ if (settings.selectSingleNode("/hostMonitor/settings/guiRows").text > maxRows) {
 }
 
 ;<=====  Read in hostList  ====================================================>
-hostsFile := fileOpen(A_ScriptDir . "\hosts.txt", "r")
+;Prompt for host file if not saved.
+while !settings.selectSingleNode("/hostMonitor/settings/hostPath").text
+{
+    FileSelectFile, path,,, Select host file, Text (*.txt)
+    if !path
+    {
+        MsgBox, 4,, No file selected.`nDo you want to exit?
+        IfMsgBox, Yes
+            ExitApp
+    } else {
+        node := settings.selectSingleNode("/hostMonitor/settings/hostPath")
+        node.text := path
+        SaveSettings(settings, tdoc)
+    }
+}
+
+hostsFile := fileOpen(settings.selectSingleNode("/hostMonitor/settings/hostPath").text, "r")
 hostsData := hostsFile.Read()
 hostsFile.Close()
 
@@ -91,6 +107,7 @@ Menu, ContextMenu, Add, Telnet, ContextMenuHandler
 ;File Menu
 Menu, FileMenu, Add, Scan Now, MenuHandler
 Menu, FileMenu, Add
+Menu, FileMenu, Add, &Open, MenuHandler
 Menu, FileMenu, Add, &Reload, MenuHandler
 Menu, FileMenu, Add
 Menu, FileMenu, Add, E&xit, MenuHandler
@@ -104,6 +121,7 @@ Menu, HelpMenu, Add, &About, MenuHandler
 Menu, SettingsMenu, Add, &Flush DNS, SettingsMenuHandler
 Menu, SettingsMenu, Add
 Menu, SettingsMenu, Add, &Ping Logging, SettingsMenuHandler
+Menu, SettingsMenu, Disable, &Ping Logging
 if settings.selectSingleNode("/hostMonitor/settings/logPings").text
     Menu, SettingsMenu, Check, &Ping Logging
 Menu, SettingsMenu, Add, Auto &TraceRt, SettingsMenuHandler
@@ -250,6 +268,16 @@ MenuButton:
 MenuHandler:
     if (A_ThisMenuItem == "Scan Now")
         CheckHosts()
+    else if (A_ThisMenuItem == "&Open"){
+        FileSelectFile, path,,, Select host file, Text (*.txt)
+        if path
+        {
+            node := settings.selectSingleNode("/hostMonitor/settings/hostPath")
+            node.text := path
+            SaveSettings(settings, tdoc)
+            Reload
+        }
+    }
     else if (A_ThisMenuItem == "&Reload")
         Reload
     else if (A_ThisMenuItem == "E&xit")

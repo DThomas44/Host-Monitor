@@ -15,6 +15,8 @@
 #SingleInstance Off
 #NoEnv
 #NoTrayIcon
+DllCall("AllocConsole")
+WinHide % "ahk_id " DllCall("GetConsoleWindow", "ptr")
 
 ;<=====  Parameters  ==========================================================>
 targetScript = %1%
@@ -22,17 +24,51 @@ host = %2%
 hostID = %3%
 
 ;<=====  Main  ================================================================>
+/*
 result := Object()
 if !Ping4(host, result, 2500) {
     reply := hostID . "||TIMEOUT"
 } else {
     reply := hostID . "|" . result.Name . "|" . result.RTTime . "ms|" . result.IPAddr
 }
+*/
+
+ping := CheckServer(host)
+ping := strSplit(ping, "|")
+if ((ping[2] == -1)||ping[2] == ""){
+    reply := hostID . "||TIMEOUT"
+} else {
+    reply := hostID . "|" . ping[1] . "|" . ping[2]
+}
 
 Send_WM_COPYDATA(reply, targetScript . " ahk_class AutoHotkey")
 ExitApp
 
 ;<=====  Functions  ===========================================================>
+
+CheckServer(host){
+    objShell := ComObjCreate("WScript.Shell")
+    objExec := objShell.Exec(ComSpec . " /c ping -a -n 1 " . host)
+    strStdOut := ""
+    while, !objExec.StdOut.AtEndOfStream
+        strStdOut := objExec.StdOut.ReadAll()
+    Loop, Parse, strStdOut, `n, `r
+    {
+        if (A_Index == 2)
+        {
+            str := strSplit(A_LoopField, A_Space)
+            if (str[2] == host)
+                str[2] := "<No DNS Resolution>"
+        }
+        if (A_Index == 3)
+        {
+            RegExMatch(A_LoopField, "O)(?=|<)\d*ms", time)
+        }
+        else
+            continue
+    }
+    return str[2] . "|" . time.Value()
+}
 
 ; ======================================================================================================================
 ; Function:       IPv4 ping with name resolution, based upon 'SimplePing' by Uberi ->
