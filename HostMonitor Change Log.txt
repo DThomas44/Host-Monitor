@@ -35,3 +35,11 @@ HostMonitor Change Log
     Improved reliability of messages:
         Added Critical to Receive_WM_COPYDATA()
         Increased timeout of SendMessage in PingMsg.ahk from 5000 to 10000ms
+
+10/11/16
+    Changed Ping4() to return 1 instead of an empty string if the result of a ping is 0ms
+    Added +BackgroundTrans to text controls
+    Removed buttons and chagned to a proper context (right click) menu
+    Added hostPath element in settings.xml
+    Implemented loading hosts based off of hostPath setting, prompt for file if not set
+    Added Open under File menu to change to a different hosts file quickly. This reloads the script.

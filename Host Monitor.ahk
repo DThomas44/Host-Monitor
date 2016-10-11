@@ -46,7 +46,23 @@ if (settings.selectSingleNode("/hostMonitor/settings/guiRows").text > maxRows) {
 }
 
 ;<=====  Read in hostList  ====================================================>
-hostsFile := fileOpen(A_ScriptDir . "\hosts.txt", "r")
+;Prompt for host file if not saved.
+while !settings.selectSingleNode("/hostMonitor/settings/hostPath").text
+{
+    FileSelectFile, path,,, Select host file, Text (*.txt)
+    if !path
+    {
+        MsgBox, 4,, No file selected.`nDo you want to exit?
+        IfMsgBox, Yes
+            ExitApp
+    } else {
+        node := settings.selectSingleNode("/hostMonitor/settings/hostPath")
+        node.text := path
+        SaveSettings(settings, tdoc)
+    }
+}
+
+hostsFile := fileOpen(settings.selectSingleNode("/hostMonitor/settings/hostPath").text, "r")
 hostsData := hostsFile.Read()
 hostsFile.Close()
 
@@ -91,6 +107,7 @@ Menu, ContextMenu, Add, Telnet, ContextMenuHandler
 ;File Menu
 Menu, FileMenu, Add, Scan Now, MenuHandler
 Menu, FileMenu, Add
+Menu, FileMenu, Add, &Open, MenuHandler
 Menu, FileMenu, Add, &Reload, MenuHandler
 Menu, FileMenu, Add
 Menu, FileMenu, Add, E&xit, MenuHandler
@@ -104,6 +121,7 @@ Menu, HelpMenu, Add, &About, MenuHandler
 Menu, SettingsMenu, Add, &Flush DNS, SettingsMenuHandler
 Menu, SettingsMenu, Add
 Menu, SettingsMenu, Add, &Ping Logging, SettingsMenuHandler
+Menu, SettingsMenu, Disable, &Ping Logging
 if settings.selectSingleNode("/hostMonitor/settings/logPings").text
     Menu, SettingsMenu, Check, &Ping Logging
 Menu, SettingsMenu, Add, Auto &TraceRt, SettingsMenuHandler
@@ -150,11 +168,11 @@ Loop % hosts.MaxIndex() {
     Gui, Add, Picture, % "x" RowX " y" RowY " w" boxWidth " 0x4000000 vi"
         . A_Index, % "HBITMAP:*" hYellow
     if hosts[A_Index, "alias"]
-        Gui, Add, Text, % "xp+5 yp+5 w120 h15 gDummyLabel vt" . A_Index . " +Center", % hosts[A_Index, "alias"]
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % hosts[A_Index, "alias"]
     else
-        Gui, Add, Text, % "xp+5 yp+5 w120 h15 gDummyLabel vt" . A_Index . " +Center", % hosts[A_Index, "name"]
-    Gui, Add, Button, % "x+0 yp w20 h30 gMenuButton vb" . A_Index, % chr(9196)
-    Gui, Add, Text, % "xp-120 yp+15 w120 h15 +Center vs" . A_Index, % hosts[A_Index, "lastSeen"]
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % hosts[A_Index, "name"]
+    ;Gui, Add, Button, % "x+0 yp w20 h30 gMenuButton vb" . A_Index, % chr(9196)
+    Gui, Add, Text, % "xp yp+15 w140 h15 +Center +BackgroundTrans vs" . A_Index, % hosts[A_Index, "lastSeen"]
     hosts[A_Index, "bgImageID"] := "i" . A_Index
     hosts[A_Index, "statusTextID"] := "s" . A_Index
     RowY += boxHeight
@@ -242,6 +260,11 @@ GuiClose:
     ExitApp
     return
 
+GuiContextMenu:
+    host := hosts[subStr(A_GuiControl, 2), "name"]
+    Menu, ContextMenu, Show
+    return
+
 MenuButton:
     host := hosts[subStr(A_GuiControl, 2), "name"]
     Menu, ContextMenu, Show
@@ -250,6 +273,16 @@ MenuButton:
 MenuHandler:
     if (A_ThisMenuItem == "Scan Now")
         CheckHosts()
+    else if (A_ThisMenuItem == "&Open"){
+        FileSelectFile, path,,, Select host file, Text (*.txt)
+        if path
+        {
+            node := settings.selectSingleNode("/hostMonitor/settings/hostPath")
+            node.text := path
+            SaveSettings(settings, tdoc)
+            Reload
+        }
+    }
     else if (A_ThisMenuItem == "&Reload")
         Reload
     else if (A_ThisMenuItem == "E&xit")
@@ -264,12 +297,8 @@ MenuHandler:
 
 SettingsMenuHandler:
     reloadScript := false
-    if (A_ThisMenuItem == "&Flush DNS") {
-        if FlushDNS()
-            MsgBox, % "DNS cache flushed."
-        else
-            MsgBox, % "Failed to flush DNS cache."
-    }
+    if (A_ThisMenuItem == "&Flush DNS")
+        MsgBox, % ((FlushDNS() == 1)?"DNS cache flushed.":"Failed to flush DNS cache.")
     else if (A_ThisMenuItem == "&Ping Logging"){
         Menu, SettingsMenu, ToggleCheck, &Ping Logging
         node := settings.selectSingleNode("/hostMonitor/settings/logPings")
@@ -291,7 +320,8 @@ SettingsMenuHandler:
         node.text := !node.text
     }
     else if (A_ThisMenuItem == "Change GUI &Rows"){
-        InputBox, userInput, Change GUI Rows, % "Enter a row count between 1 and " . maxRows . ".`nSet to 0 for AutoSize based on monitor work area and host count."
+        InputBox, userInput, Change GUI Rows, % "Enter a row count between 1 and "
+            . maxRows . ".`nSet to 0 for AutoSize based on monitor work area and host count."
         if userInput is not integer
         {
             MsgBox, This setting can only take an integer.

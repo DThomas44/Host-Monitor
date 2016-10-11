@@ -22,6 +22,7 @@ host = %2%
 hostID = %3%
 
 ;<=====  Main  ================================================================>
+
 result := Object()
 if !Ping4(host, result, 2500) {
     reply := hostID . "||TIMEOUT"
@@ -33,7 +34,6 @@ Send_WM_COPYDATA(reply, targetScript . " ahk_class AutoHotkey")
 ExitApp
 
 ;<=====  Functions  ===========================================================>
-
 ; ======================================================================================================================
 ; Function:       IPv4 ping with name resolution, based upon 'SimplePing' by Uberi ->
 ;                 http://www.autohotkey.com/board/topic/87742-simpleping-successor-of-ping/
@@ -95,7 +95,7 @@ Ping4(Addr, ByRef Result := "", Timeout := 1024) {
             Result := {}
             Result.InAddr := OrgAddr
             Result.IPAddr := StrGet(DllCall("Ws2_32.dll\inet_ntoa", "UInt", NumGet(Reply, 0, "UInt"), "UPtr"), "CP0")
-            Result.RTTime := NumGet(Reply, 8, "UInt")
+            Result.RTTime := ((NumGet(Reply, 8, "UInt") == 0)?1:NumGet(Reply, 8, "UInt"))
         }
         Else
             Err := "IcmpSendEcho failed with error " . A_LastError
