@@ -1,25 +1,14 @@
 /*
     Host Monitor.ahk
-    Author: Daniel Thomas
-    Date: 10/6/2016
+    Authors: Elesar (Daniel Thomas) & Grendahl
+
+    Uses functions by SKAN, just me, Uberi & jNizM
 
     Monitors a set of hosts periodically and gives visual representation of their status.
     Includes several tools for troubleshooting.
 
     Some functionality depends on putty.exe being in the inc folder.
 
-    To Do:
-        Implement option to edit hosts file
-        Do a proper about window
-        Add checking for putty.exe and prompting to download if not found
-        From https://autohotkey.com/boards/viewtopic.php?f=6&t=23378&p=112339#p112339 :
-            Look into adding graph on main window
-            Look into changning yellow to indicate something more useful than refresh (possible if latency above user setting)
-        Improve tracert script for gracefully handling when there is no name resolution instead of just dying
-        Implement logging (failures/high latency in main script, full in graph script if enabled)
-        Change MaxThreads, CheckInterval & PingAvg settings to not require reload
-        Implement latency warning setting (change color to yellow if above setting)
-        Correct timing issues with countdown and scan (scanning 5+ seconds early on home system)
 */
 ;<=====  System Settings  =====================================================>
 #SingleInstance, Force
@@ -30,10 +19,6 @@ SetBatchLines, -1
 ;Receive messages from slave scripts and Windows
 OnMessage(0x4a, "Receive_WM_COPYDATA")
 OnMessage(0x200, "WM_MOUSEMOVE") ; Tooltips
-
-;Allcate console so we don't have constant flashing windows while pinging
-DllCall("AllocConsole")
-WinHide % "ahk_id " DllCall("GetConsoleWindow", "ptr")
 
 ;Make sure we are exiting nicely
 OnExit, Exit
@@ -61,7 +46,23 @@ if (settings.selectSingleNode("/hostMonitor/settings/guiRows").text > maxRows) {
 }
 
 ;<=====  Read in hostList  ====================================================>
-hostsFile := fileOpen(A_ScriptDir . "\hosts.txt", "r")
+;Prompt for host file if not saved.
+while !settings.selectSingleNode("/hostMonitor/settings/hostPath").text
+{
+    FileSelectFile, path,,, Select host file, Text (*.txt)
+    if !path
+    {
+        MsgBox, 4,, No file selected.`nDo you want to exit?
+        IfMsgBox, Yes
+            ExitApp
+    } else {
+        node := settings.selectSingleNode("/hostMonitor/settings/hostPath")
+        node.text := path
+        SaveSettings(settings, tdoc)
+    }
+}
+
+hostsFile := fileOpen(settings.selectSingleNode("/hostMonitor/settings/hostPath").text, "r")
 hostsData := hostsFile.Read()
 hostsFile.Close()
 
@@ -106,6 +107,7 @@ Menu, ContextMenu, Add, Telnet, ContextMenuHandler
 ;File Menu
 Menu, FileMenu, Add, Scan Now, MenuHandler
 Menu, FileMenu, Add
+Menu, FileMenu, Add, &Open, MenuHandler
 Menu, FileMenu, Add, &Reload, MenuHandler
 Menu, FileMenu, Add
 Menu, FileMenu, Add, E&xit, MenuHandler
@@ -119,6 +121,7 @@ Menu, HelpMenu, Add, &About, MenuHandler
 Menu, SettingsMenu, Add, &Flush DNS, SettingsMenuHandler
 Menu, SettingsMenu, Add
 Menu, SettingsMenu, Add, &Ping Logging, SettingsMenuHandler
+Menu, SettingsMenu, Disable, &Ping Logging
 if settings.selectSingleNode("/hostMonitor/settings/logPings").text
     Menu, SettingsMenu, Check, &Ping Logging
 Menu, SettingsMenu, Add, Auto &TraceRt, SettingsMenuHandler
@@ -165,11 +168,11 @@ Loop % hosts.MaxIndex() {
     Gui, Add, Picture, % "x" RowX " y" RowY " w" boxWidth " 0x4000000 vi"
         . A_Index, % "HBITMAP:*" hYellow
     if hosts[A_Index, "alias"]
-        Gui, Add, Text, % "xp+5 yp+5 w120 h15 gDummyLabel vt" . A_Index . " +Center", % hosts[A_Index, "alias"]
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % hosts[A_Index, "alias"]
     else
-        Gui, Add, Text, % "xp+5 yp+5 w120 h15 gDummyLabel vt" . A_Index . " +Center", % hosts[A_Index, "name"]
-    Gui, Add, Button, % "x+0 yp w20 h30 gMenuButton vb" . A_Index, % chr(9196)
-    Gui, Add, Text, % "xp-120 yp+15 w120 h15 +Center vs" . A_Index, % hosts[A_Index, "lastSeen"]
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % hosts[A_Index, "name"]
+    ;Gui, Add, Button, % "x+0 yp w20 h30 gMenuButton vb" . A_Index, % chr(9196)
+    Gui, Add, Text, % "xp yp+15 w140 h15 +Center +BackgroundTrans vs" . A_Index, % hosts[A_Index, "lastSeen"]
     hosts[A_Index, "bgImageID"] := "i" . A_Index
     hosts[A_Index, "statusTextID"] := "s" . A_Index
     RowY += boxHeight
@@ -257,6 +260,11 @@ GuiClose:
     ExitApp
     return
 
+GuiContextMenu:
+    host := hosts[subStr(A_GuiControl, 2), "name"]
+    Menu, ContextMenu, Show
+    return
+
 MenuButton:
     host := hosts[subStr(A_GuiControl, 2), "name"]
     Menu, ContextMenu, Show
@@ -265,6 +273,16 @@ MenuButton:
 MenuHandler:
     if (A_ThisMenuItem == "Scan Now")
         CheckHosts()
+    else if (A_ThisMenuItem == "&Open"){
+        FileSelectFile, path,,, Select host file, Text (*.txt)
+        if path
+        {
+            node := settings.selectSingleNode("/hostMonitor/settings/hostPath")
+            node.text := path
+            SaveSettings(settings, tdoc)
+            Reload
+        }
+    }
     else if (A_ThisMenuItem == "&Reload")
         Reload
     else if (A_ThisMenuItem == "E&xit")
@@ -279,12 +297,8 @@ MenuHandler:
 
 SettingsMenuHandler:
     reloadScript := false
-    if (A_ThisMenuItem == "&Flush DNS"){
-        if A_IsCompiled
-            Run, % A_ScriptDir . "\inc\flushdns.exe"
-        else
-            Run, % A_ScriptDir . "\inc\flushdns.ahk"
-    }
+    if (A_ThisMenuItem == "&Flush DNS")
+        MsgBox, % ((FlushDNS() == 1)?"DNS cache flushed.":"Failed to flush DNS cache.")
     else if (A_ThisMenuItem == "&Ping Logging"){
         Menu, SettingsMenu, ToggleCheck, &Ping Logging
         node := settings.selectSingleNode("/hostMonitor/settings/logPings")
@@ -306,7 +320,8 @@ SettingsMenuHandler:
         node.text := !node.text
     }
     else if (A_ThisMenuItem == "Change GUI &Rows"){
-        InputBox, userInput, Change GUI Rows, % "Enter a row count between 1 and " . maxRows . ".`nSet to 0 for AutoSize based on monitor work area and host count."
+        InputBox, userInput, Change GUI Rows, % "Enter a row count between 1 and "
+            . maxRows . ".`nSet to 0 for AutoSize based on monitor work area and host count."
         if userInput is not integer
         {
             MsgBox, This setting can only take an integer.
@@ -331,9 +346,6 @@ SettingsMenuHandler:
             userInput := 1
         node := settings.selectSingleNode("/hostMonitor/settings/maxThreads")
         node.text := userInput
-        MsgBox, 4,,% "Setting changed. This setting requires a script reload.`nReload now?"
-        ifMsgBox, Yes
-            reloadScript := true
     }
     else if (A_ThisMenuItem == "Change Check &Interval"){
         InputBox, userInput, Change Check Interval, % "Enter a check interval in seconds.`nSuggest 30 or higher."
@@ -346,9 +358,6 @@ SettingsMenuHandler:
             userInput := 1
         node := settings.selectSingleNode("/hostMonitor/settings/checkInterval")
         node.text := userInput
-        MsgBox, 4,,% "Setting changed. This setting requires a script reload.`nReload now?"
-        ifMsgBox, Yes
-            reloadScript := true
     }
     else if (A_ThisMenuItem == "Change Ping &Average Count"){
         InputBox, userInput, Change Ping Average Count, % "Enter an averaging count.`nSuggest 10 - 50."
@@ -426,9 +435,19 @@ CheckHosts(){
         SB_SetText(threads.MaxIndex() . " threads active", 3)
     }
     scanTimer := settings.selectSingleNode("/hostMonitor/settings/checkInterval").text
-    SetTimer, CheckHosts, On
+    SetTimer, CheckHosts, % (settings.selectSingleNode("/hostMonitor/settings/checkInterval").text * 1000)
     SetTimer, UpdateSB, On
     SetTimer, StaleThreads, % (((settings.selectSingleNode("/hostMonitor/settings/checkInterval").text) / 2) * 1000)
+}
+
+;FlushDNS by jNizM
+FlushDNS(){
+    if !(DllCall("dnsapi.dll\DnsFlushResolverCache"))
+    {
+        throw Exception("DnsFlushResolverCache", -1)
+        return 0
+    }
+    return 1
 }
 
 LoadXML(file){
@@ -448,6 +467,7 @@ LoadXML(file){
 
 Receive_WM_COPYDATA(wParam, lParam){
     Global
+    Critical
     StringAddress := NumGet(lParam + 2*A_PtrSize)
     CopyOfData := StrGet(StringAddress)
 
