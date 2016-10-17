@@ -85,6 +85,7 @@ Loop, Parse, hostsData, `n, `r
         hosts[A_Index, "ip"] := ""
         hosts[A_Index, "lastSeen"] := "Never"
         hosts[A_Index, "bgImageID"] := ""
+        hosts[A_Index, "nameTextID"] := ""
         hosts[A_Index, "statusTextID"] := ""
         hosts[A_Index, "threadID"] := ""
         hosts[A_Index].pingArray := Object()
@@ -168,12 +169,12 @@ Loop % hosts.MaxIndex() {
     Gui, Add, Picture, % "x" RowX " y" RowY " w" boxWidth " 0x4000000 vi"
         . A_Index, % "HBITMAP:*" hYellow
     if hosts[A_Index, "alias"]
-        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % hosts[A_Index, "alias"]
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % subStr(hosts[A_Index, "alias"], 1, 25)
     else
-        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % hosts[A_Index, "name"]
-    ;Gui, Add, Button, % "x+0 yp w20 h30 gMenuButton vb" . A_Index, % chr(9196)
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % subStr(hosts[A_Index, "name"], 1, 25)
     Gui, Add, Text, % "xp yp+15 w140 h15 +Center +BackgroundTrans vs" . A_Index, % hosts[A_Index, "lastSeen"]
     hosts[A_Index, "bgImageID"] := "i" . A_Index
+    hosts[A_Index, "nameTextID"] := "t" . A_Index
     hosts[A_Index, "statusTextID"] := "s" . A_Index
     RowY += boxHeight
 }
@@ -490,10 +491,18 @@ Receive_WM_COPYDATA(wParam, lParam){
             hosts[reply[1]].pingArray.RemoveAt(1)
 
         ;Add new ping time to array
-        hosts[reply[1]].pingArray.Push(strReplace(reply[3], "ms"))
+        hosts[reply[1]].pingArray.Push(reply[3])
 
-        ;Update host's ip element
-        hosts[reply[1], "ip"] := reply[4]
+        ;Update host's name element if its an IP & update GUI
+        if (RegExMatch(hosts[reply[1], "name"], "^((|\.)\d{1,3}){4}$") && !hosts[reply[1], "alias"])
+        {
+            hosts[reply[1], "name"] := reply[2]
+            GuiControl,, % hosts[reply[1], "nameTextID"], % subStr(hosts[reply[1], "name"], 1, 25)
+        }
+
+        ;Update host's ip element if different
+        if (reply[4] != hosts[reply[1], "ip"])
+            hosts[reply[1], "ip"] := reply[4]
 
         ;Update host's lastSeen element
         hosts[reply[1], "lastSeen"] := A_Hour . ":" . A_Min
@@ -509,16 +518,14 @@ Receive_WM_COPYDATA(wParam, lParam){
         if (strReplace(reply[3], "ms") >= settings.selectSingleNode("/hostMonitor/settings/warnLatency").text)
         {
             GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hYellow
-            ;GuiControl,, % hosts[reply[1], "statusTextID"], % reply[3] . " >= " . settings.selectSingleNode("/hostMonitor/settings/warnLatency").text
         }
         else
         {
             GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hGreen
-            ;GuiControl,, % hosts[reply[1], "statusTextID"], % reply[3] . " < " . settings.selectSingleNode("/hostMonitor/settings/warnLatency").text
         }
 
         ;Update status text
-        GuiControl,, % hosts[reply[1], "statusTextID"], % reply[3] . " (" . avg . "ms)"
+        GuiControl,, % hosts[reply[1], "statusTextID"], % reply[3] . "ms (" . avg . "ms)"
 
         ;Increment onlineCount variable
         onlineCount++

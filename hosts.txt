@@ -2,3 +2,5 @@ www.google.com
 www.yahoo.com
 amazon.com
 speedtest.net
+8.8.8.8
+8.8.8.8 [Google DNS]

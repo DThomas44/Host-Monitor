@@ -9,9 +9,9 @@
 		<logTraceRt>0</logTraceRt>
 		<logPings>0</logPings>
 		<rememberPos>1</rememberPos>
-		<winX>1</winX>
-		<winY>1</winY>
+		<winX>-1922</winX>
+		<winY>4</winY>
 		<warnLatency>60</warnLatency>
-		<hostPath></hostPath>
+		<hostPath>C:\Users\dthomas1\Documents\GitHub\Host-Monitor\hosts.txt</hostPath>
 	</settings>
 </hostMonitor>
