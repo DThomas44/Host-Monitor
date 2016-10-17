@@ -25,7 +25,14 @@ hostID = %3%
 reply := hostID . "|"
 
 if RegExMatch(host, "^((|\.)\d{1,3}){4}$")
-    reply .= IPHelper.ReverseLookup(host) . "|"
+{
+    try {
+        reply .= IPHelper.ReverseLookup(host) . "|"
+    }
+    catch e {
+        reply .= "|"
+    }
+}
 else
     reply .= host . "|"
 
@@ -37,7 +44,14 @@ catch e {
 }
 
 if !(RegExMatch(addr, "^((|\.)\d{1,3}){4}$"))
-    reply .= IPHelper.ResolveHostname(host)
+{
+    Try {
+        reply .= IPHelper.ResolveHostname(host)
+    }
+    catch e {
+        reply .= "|"
+    }
+}
 else
     reply .= host
 
