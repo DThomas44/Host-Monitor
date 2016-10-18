@@ -85,6 +85,7 @@ Loop, Parse, hostsData, `n, `r
         hosts[A_Index, "ip"] := ""
         hosts[A_Index, "lastSeen"] := "Never"
         hosts[A_Index, "bgImageID"] := ""
+        hosts[A_Index, "nameTextID"] := ""
         hosts[A_Index, "statusTextID"] := ""
         hosts[A_Index, "threadID"] := ""
         hosts[A_Index].pingArray := Object()
@@ -120,16 +121,12 @@ Menu, HelpMenu, Add, &About, MenuHandler
 ;Settings Menu
 Menu, SettingsMenu, Add, &Flush DNS, SettingsMenuHandler
 Menu, SettingsMenu, Add
-Menu, SettingsMenu, Add, &Ping Logging, SettingsMenuHandler
-Menu, SettingsMenu, Disable, &Ping Logging
-if settings.selectSingleNode("/hostMonitor/settings/logPings").text
-    Menu, SettingsMenu, Check, &Ping Logging
+Menu, SettingsMenu, Add, &Logging, SettingsMenuHandler
+if settings.selectSingleNode("/hostMonitor/settings/logging").text
+    Menu, SettingsMenu, Check, &Logging
 Menu, SettingsMenu, Add, Auto &TraceRt, SettingsMenuHandler
 if settings.selectSingleNode("/hostMonitor/settings/autoTraceRt").text
     Menu, SettingsMenu, Check, Auto &TraceRt
-Menu, SettingsMenu, Add, TraceRt &Logging, SettingsMenuHandler
-if settings.selectSingleNode("/hostMonitor/settings/logTraceRt").text
-    Menu, SettingsMenu, Check, TraceRt &Logging
 Menu, SettingsMenu, Add, Remember &Window Pos, SettingsMenuHandler
 if settings.selectSingleNode("/hostMonitor/settings/rememberPos").text
     Menu, SettingsMenu, Check, Remember &Window Pos
@@ -165,15 +162,18 @@ Loop % hosts.MaxIndex() {
         RowX += 155
         RowY := 5
     }
+
     Gui, Add, Picture, % "x" RowX " y" RowY " w" boxWidth " 0x4000000 vi"
         . A_Index, % "HBITMAP:*" hYellow
+
+    ;Gui, Add, Progress, % "x" RowX " y" RowY " w" boxWidth " vi" A_Index, 100
     if hosts[A_Index, "alias"]
-        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % hosts[A_Index, "alias"]
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % subStr(hosts[A_Index, "alias"], 1, 25)
     else
-        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % hosts[A_Index, "name"]
-    ;Gui, Add, Button, % "x+0 yp w20 h30 gMenuButton vb" . A_Index, % chr(9196)
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % subStr(hosts[A_Index, "name"], 1, 25)
     Gui, Add, Text, % "xp yp+15 w140 h15 +Center +BackgroundTrans vs" . A_Index, % hosts[A_Index, "lastSeen"]
     hosts[A_Index, "bgImageID"] := "i" . A_Index
+    hosts[A_Index, "nameTextID"] := "t" . A_Index
     hosts[A_Index, "statusTextID"] := "s" . A_Index
     RowY += boxHeight
 }
@@ -205,6 +205,8 @@ scanTimer := settings.selectSingleNode("/hostMonitor/settings/checkInterval").te
 SetTimer, UpdateSB, 1000
 
 ;<=====  Main  ================================================================>
+if settings.selectSingleNode("/hostMonitor/settings/logging").Text
+    logFile := LogStart(settings)
 CheckHosts()
 
 ;<=====  End AutoExecute  =====================================================>
@@ -257,6 +259,8 @@ GuiClose:
     node := settings.selectSingleNode("/hostMonitor/settings/winY")
     node.text := winY
     SaveSettings(settings, tdoc)
+    if settings.selectSingleNode("/hostMonitor/settings/logging").text
+        LogStop(logFile)
     ExitApp
     return
 
@@ -299,19 +303,18 @@ SettingsMenuHandler:
     reloadScript := false
     if (A_ThisMenuItem == "&Flush DNS")
         MsgBox, % ((FlushDNS() == 1)?"DNS cache flushed.":"Failed to flush DNS cache.")
-    else if (A_ThisMenuItem == "&Ping Logging"){
-        Menu, SettingsMenu, ToggleCheck, &Ping Logging
-        node := settings.selectSingleNode("/hostMonitor/settings/logPings")
+    else if (A_ThisMenuItem == "&Logging"){
+        Menu, SettingsMenu, ToggleCheck, &Logging
+        node := settings.selectSingleNode("/hostMonitor/settings/logging")
         node.text := !node.text
+        if node.text
+            logFile := LogStart(settings)
+        else
+            LogStop(logFile)
     }
     else if (A_ThisMenuItem == "Auto &TraceRt"){
         Menu, SettingsMenu, ToggleCheck, Auto &TraceRt
         node := settings.selectSingleNode("/hostMonitor/settings/autoTraceRt")
-        node.text := !node.text
-    }
-    else if (A_ThisMenuItem == "TraceRt &Logging"){
-        Menu, SettingsMenu, ToggleCheck, TraceRt &Logging
-        node := settings.selectSingleNode("/hostMonitor/settings/logTraceRt")
         node.text := !node.text
     }
     else if (A_ThisMenuItem == "Remember &Window Pos"){
@@ -465,6 +468,31 @@ LoadXML(file){
     return doc
 }
 
+Log(logFile, text){
+    FormatTime, TimeStamp, A_Now, [dd/MMM/yyyy HH:mm:ss]
+    logFile.Write(TimeStamp . " " . text . "`r`n")
+    return 1
+}
+
+LogStart(settings){
+    FormatTime, TimeStamp, A_Now, dd-MMM-yyyy_HH-mm-ss
+    Try {
+        file := fileOpen(A_ScriptDir . "\Logs\" . TimeStamp . ".txt", "w")
+    }
+    catch e {
+        MsgBox, Failed to open file for logging!`n%A_LastError%
+    }
+    file.Write("[" . TimeStamp . "] Logging started. Using hosts file " . settings.selectSingleNode("/hostMonitor/settings/hostPath").text . "`r`n")
+    return file
+}
+
+LogStop(logFile){
+    FormatTime, TimeStamp, A_Now, [dd/MMM/yyyy HH:mm:ss]
+    logFile.Write(TimeStamp . " Logging finished.`r`n")
+    logFile.Close()
+    return 1
+}
+
 Receive_WM_COPYDATA(wParam, lParam){
     Global
     Critical
@@ -490,10 +518,18 @@ Receive_WM_COPYDATA(wParam, lParam){
             hosts[reply[1]].pingArray.RemoveAt(1)
 
         ;Add new ping time to array
-        hosts[reply[1]].pingArray.Push(strReplace(reply[3], "ms"))
+        hosts[reply[1]].pingArray.Push(reply[3])
 
-        ;Update host's ip element
-        hosts[reply[1], "ip"] := reply[4]
+        ;Update host's name element if its an IP & update GUI
+        if (RegExMatch(hosts[reply[1], "name"], "^((|\.)\d{1,3}){4}$") && !hosts[reply[1], "alias"])
+        {
+            hosts[reply[1], "name"] := reply[2]
+            GuiControl,, % hosts[reply[1], "nameTextID"], % subStr(hosts[reply[1], "name"], 1, 25)
+        }
+
+        ;Update host's ip element if different
+        if (reply[4] != hosts[reply[1], "ip"])
+            hosts[reply[1], "ip"] := reply[4]
 
         ;Update host's lastSeen element
         hosts[reply[1], "lastSeen"] := A_Hour . ":" . A_Min
@@ -509,16 +545,18 @@ Receive_WM_COPYDATA(wParam, lParam){
         if (strReplace(reply[3], "ms") >= settings.selectSingleNode("/hostMonitor/settings/warnLatency").text)
         {
             GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hYellow
-            ;GuiControl,, % hosts[reply[1], "statusTextID"], % reply[3] . " >= " . settings.selectSingleNode("/hostMonitor/settings/warnLatency").text
+
+            ;Log warnings to file if enabled.
+            if settings.selectSingleNode("/hostMonitor/settings/logging").text
+                Log(logFile, hosts[reply[1], "name"] . " latency high: " . reply[3] . "ms (" settings.selectSingleNode("/hostMonitor/settings/warnLatency").text . " threshold)")
         }
         else
         {
             GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hGreen
-            ;GuiControl,, % hosts[reply[1], "statusTextID"], % reply[3] . " < " . settings.selectSingleNode("/hostMonitor/settings/warnLatency").text
         }
 
         ;Update status text
-        GuiControl,, % hosts[reply[1], "statusTextID"], % reply[3] . " (" . avg . "ms)"
+        GuiControl,, % hosts[reply[1], "statusTextID"], % reply[3] . "ms (" . avg . "ms)"
 
         ;Increment onlineCount variable
         onlineCount++
@@ -536,6 +574,10 @@ Receive_WM_COPYDATA(wParam, lParam){
 
         ;Update status text
         GuiControl,, % hosts[reply[1], "statusTextID"], % "Last Seen: " . hosts[reply[1], "lastSeen"]
+
+        ;Log failures to file if enabled
+        if settings.selectSingleNode("/hostMonitor/settings/logging").text
+            Log(logFile, hosts[reply[1], "name"] . " TIMEOUT")
 
         ;Increment offlineCount variable
         offlineCount++

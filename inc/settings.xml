@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <hostMonitor>
 	<settings>
-		<guiRows>0</guiRows>
+		<guiRows>10</guiRows>
 		<maxThreads>250</maxThreads>
 		<checkInterval>60</checkInterval>
 		<pingAvgCount>10</pingAvgCount>
 		<autoTraceRt>0</autoTraceRt>
-		<logTraceRt>0</logTraceRt>
-		<logPings>0</logPings>
+		<logging>1</logging>
 		<rememberPos>1</rememberPos>
-		<winX>1</winX>
-		<winY>1</winY>
-		<warnLatency>60</warnLatency>
+		<winX>10</winX>
+		<winY>10</winY>
+		<warnLatency>30</warnLatency>
 		<hostPath></hostPath>
 	</settings>
 </hostMonitor>
