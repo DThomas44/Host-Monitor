@@ -43,3 +43,12 @@ HostMonitor Change Log
     Added hostPath element in settings.xml
     Implemented loading hosts based off of hostPath setting, prompt for file if not set
     Added Open under File menu to change to a different hosts file quickly. This reloads the script.
+
+10/25/16
+    Added checking for log directory before opening a log file. Creates directory if not found
+    Modified logging functions to open/close file each operation for real-time logging instead of holding everything in buffer until close/disable logging
+    Added "Explore C:" option to context menu
+    Won't show context menu unless mouse is over a relevant control
+    Added DummyLable to all text fields/pics so that we can show context menu anywhere on a host's display
+    Added "Open Log File" to file menu (runs the file - notepad or default .txt application)
+
