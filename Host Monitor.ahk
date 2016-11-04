@@ -99,6 +99,8 @@ Menu, ContextMenu, Add, Ping Graph, ContextMenuHandler
 Menu, ContextMenu, Add
 Menu, ContextMenu, Add, RDP, ContextMenuHandler
 Menu, ContextMenu, Add
+Menu, ContextMenu, Add, Explore C:, ContextMenuHandler
+Menu, ContextMenu, Add
 Menu, ContextMenu, Add, Browse, ContextMenuHandler
 Menu, ContextMenu, Add, Browse (https), ContextMenuHandler
 Menu, ContextMenu, Add
@@ -106,7 +108,8 @@ Menu, ContextMenu, Add, SSH, ContextMenuHandler
 Menu, ContextMenu, Add, Telnet, ContextMenuHandler
 
 ;File Menu
-Menu, FileMenu, Add, Scan Now, MenuHandler
+Menu, FileMenu, Add, &Scan Now, MenuHandler
+Menu, FileMenu, Add, Open &Log File, MenuHandler
 Menu, FileMenu, Add
 Menu, FileMenu, Add, &Open, MenuHandler
 Menu, FileMenu, Add, &Reload, MenuHandler
@@ -163,15 +166,19 @@ Loop % hosts.MaxIndex() {
         RowY := 5
     }
 
-    Gui, Add, Picture, % "x" RowX " y" RowY " w" boxWidth " 0x4000000 vi"
+    Gui, Add, Picture, % "x" RowX " y" RowY " w" boxWidth " 0x4000000 gDummyLabel vi"
         . A_Index, % "HBITMAP:*" hYellow
 
-    ;Gui, Add, Progress, % "x" RowX " y" RowY " w" boxWidth " vi" A_Index, 100
-    if hosts[A_Index, "alias"]
-        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % subStr(hosts[A_Index, "alias"], 1, 25)
-    else
-        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt" . A_Index . " +Center", % subStr(hosts[A_Index, "name"], 1, 25)
-    Gui, Add, Text, % "xp yp+15 w140 h15 +Center +BackgroundTrans vs" . A_Index, % hosts[A_Index, "lastSeen"]
+    if hosts[A_Index, "alias"] {
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt"
+            . A_Index . " +Center", % subStr(hosts[A_Index, "alias"], 1, 25)
+    }
+    else {
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt"
+            . A_Index . " +Center", % subStr(hosts[A_Index, "name"], 1, 25)
+    }
+    Gui, Add, Text, % "xp yp+15 w140 h15 gDummyLabel +BackgroundTrans vs"
+        . A_Index . " +Center", % hosts[A_Index, "lastSeen"]
     hosts[A_Index, "bgImageID"] := "i" . A_Index
     hosts[A_Index, "nameTextID"] := "t" . A_Index
     hosts[A_Index, "statusTextID"] := "s" . A_Index
@@ -230,6 +237,8 @@ ContextMenuHandler:
         StartPingGraph(host)
     else if (A_ThisMenuItem == "RDP")
         Run, % "mstsc /v:" . host
+    else if (A_ThisMenuItem == "Explore C:")
+        Run % "\\" . host . "\c$"
     else if (A_ThisMenuItem == "Browse")
         Run, % "http://" . host
     else if (A_ThisMenuItem == "Browse (https)")
@@ -266,7 +275,8 @@ GuiClose:
 
 GuiContextMenu:
     host := hosts[subStr(A_GuiControl, 2), "name"]
-    Menu, ContextMenu, Show
+    if host
+        Menu, ContextMenu, Show
     return
 
 MenuButton:
@@ -275,8 +285,14 @@ MenuButton:
     return
 
 MenuHandler:
-    if (A_ThisMenuItem == "Scan Now")
+    if (A_ThisMenuItem == "&Scan Now")
         CheckHosts()
+    else if (A_ThisMenuItem == "Open &Log File"){
+        if logFile
+            Run, logFile
+        else
+            MsgBox, % "No log file available at this time."
+    }
     else if (A_ThisMenuItem == "&Open"){
         FileSelectFile, path,,, Select host file, Text (*.txt)
         if path
@@ -468,26 +484,33 @@ LoadXML(file){
     return doc
 }
 
-Log(logFile, text){
+Log(fileName, text){
     FormatTime, TimeStamp, A_Now, [dd/MMM/yyyy HH:mm:ss]
+    logFile := fileOpen(fileName, "a")
     logFile.Write(TimeStamp . " " . text . "`r`n")
+    logFile.Close()
     return 1
 }
 
 LogStart(settings){
     FormatTime, TimeStamp, A_Now, dd-MMM-yyyy_HH-mm-ss
+    IfNotExist, % A_ScriptDir . "\Logs\"
+        FileCreateDir, % A_ScriptDir . "\Logs"
+    fileName := A_ScriptDir . "\Logs\" . TimeStamp . ".txt"
     Try {
-        file := fileOpen(A_ScriptDir . "\Logs\" . TimeStamp . ".txt", "w")
+        logFile := fileOpen(fileName, "w")
     }
     catch e {
         MsgBox, Failed to open file for logging!`n%A_LastError%
     }
-    file.Write("[" . TimeStamp . "] Logging started. Using hosts file " . settings.selectSingleNode("/hostMonitor/settings/hostPath").text . "`r`n")
-    return file
+    logFile.Write("[" . TimeStamp . "] Logging started. Using hosts file " . settings.selectSingleNode("/hostMonitor/settings/hostPath").text . "`r`n")
+    logFile.Close()
+    return fileName
 }
 
-LogStop(logFile){
+LogStop(fileName){
     FormatTime, TimeStamp, A_Now, [dd/MMM/yyyy HH:mm:ss]
+    logFile := fileOpen(fileName, "a")
     logFile.Write(TimeStamp . " Logging finished.`r`n")
     logFile.Close()
     return 1
@@ -548,7 +571,7 @@ Receive_WM_COPYDATA(wParam, lParam){
 
             ;Log warnings to file if enabled.
             if settings.selectSingleNode("/hostMonitor/settings/logging").text
-                Log(logFile, hosts[reply[1], "name"] . " latency high: " . reply[3] . "ms (" settings.selectSingleNode("/hostMonitor/settings/warnLatency").text . " threshold)")
+                Log(logFile, hosts[reply[1], "name"] . " latency high: " . reply[3] . "ms (" settings.selectSingleNode("/hostMonitor/settings/warnLatency").text . "ms threshold)")
         }
         else
         {
