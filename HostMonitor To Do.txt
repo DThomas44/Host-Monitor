@@ -1,10 +1,5 @@
 HostMonitor To Do:
 
-Implement option to edit hosts file
 Do a proper about window
 From https://autohotkey.com/boards/viewtopic.php?f=6&t=23378&p=112339#p112339 :
     Look into adding graph on main window
-Improve tracert script for gracefully handling when there is no name resolution instead of just dying
-PingAvg setting to not require reload
-Add current setting value to any settings dialogs
-Automatically start a new log file every 24h (at midnight?)
