@@ -52,3 +52,9 @@ HostMonitor Change Log
     Added DummyLable to all text fields/pics so that we can show context menu anywhere on a host's display
     Added "Open Log File" to file menu (runs the file - notepad or default .txt application)
 
+11/07/2016
+    Added current settings to any settings input dialogs
+    Added timer that runs every minute for triggering events at specific times of day
+    Logging system now starts a new log at midnight
+    Changed File/Open Log File to Open Log Folder as we now potentially generate several log files
+    Corrected settings dialogs hadling of cancel/close giving errors related in input validation

@@ -109,7 +109,7 @@ Menu, ContextMenu, Add, Telnet, ContextMenuHandler
 
 ;File Menu
 Menu, FileMenu, Add, &Scan Now, MenuHandler
-Menu, FileMenu, Add, Open &Log File, MenuHandler
+Menu, FileMenu, Add, Open &Log Folder, MenuHandler
 Menu, FileMenu, Add
 Menu, FileMenu, Add, &Open, MenuHandler
 Menu, FileMenu, Add, &Reload, MenuHandler
@@ -211,6 +211,9 @@ SetTimer, CheckHosts, % (settings.selectSingleNode("/hostMonitor/settings/checkI
 scanTimer := settings.selectSingleNode("/hostMonitor/settings/checkInterval").text
 SetTimer, UpdateSB, 1000
 
+;Clock time based events
+SetTimer, CheckTime, 60000
+
 ;<=====  Main  ================================================================>
 if settings.selectSingleNode("/hostMonitor/settings/logging").Text
     logFile := LogStart(settings)
@@ -230,6 +233,15 @@ About:
     MsgBox, % aboutText
     return
 
+CheckTime:
+    ;Start a new log file if midnight
+    if ((A_Hour == 00) && (A_Min == 00) && (settings.selectSingleNode("/hostMonitor/settings/logging").text))
+    {
+        logStop(logFile)
+        logFile := logStart(settings)
+    }
+    return
+
 ContextMenuHandler:
     if (A_ThisMenuItem == "Trace Route")
         StartTrace(host)
@@ -238,7 +250,7 @@ ContextMenuHandler:
     else if (A_ThisMenuItem == "RDP")
         Run, % "mstsc /v:" . host
     else if (A_ThisMenuItem == "Explore C:")
-        Run % "\\" . host . "\c$"
+        Run, % "explore \\" . host . "\c$"
     else if (A_ThisMenuItem == "Browse")
         Run, % "http://" . host
     else if (A_ThisMenuItem == "Browse (https)")
@@ -257,7 +269,7 @@ Debug:
     Return
 
 DummyLabel:
-    ;Needed to get tooltips on text controls...
+    ;Needed to get tooltips/menus on text controls...
     Return
 
 Exit:
@@ -287,12 +299,8 @@ MenuButton:
 MenuHandler:
     if (A_ThisMenuItem == "&Scan Now")
         CheckHosts()
-    else if (A_ThisMenuItem == "Open &Log File"){
-        if logFile
-            Run, logFile
-        else
-            MsgBox, % "No log file available at this time."
-    }
+    else if (A_ThisMenuItem == "Open &Log Folder")
+        Run, % "explore " . A_ScriptDir . "\Logs"
     else if (A_ThisMenuItem == "&Open"){
         FileSelectFile, path,,, Select host file, Text (*.txt)
         if path
@@ -341,6 +349,9 @@ SettingsMenuHandler:
     else if (A_ThisMenuItem == "Change GUI &Rows"){
         InputBox, userInput, Change GUI Rows, % "Enter a row count between 1 and "
             . maxRows . ".`nSet to 0 for AutoSize based on monitor work area and host count."
+            . "`nCurrent setting is " . settings.selectSingleNode("/hostMonitor/settings/guiRows").text
+        if !userInput
+            return
         if userInput is not integer
         {
             MsgBox, This setting can only take an integer.
@@ -355,7 +366,11 @@ SettingsMenuHandler:
             reloadScript := true
     }
     else if (A_ThisMenuItem == "Change Max &Threads"){
-        InputBox, userInput, Change Max Threads, % "Enter a thread count greater than 1.`nWarning: May load CPU or cause script issues if too many threads are allowed."
+        InputBox, userInput, Change Max Threads, % "Enter a thread count greater than 1."
+            . "`nWarning: May load CPU or cause script issues if too many threads are allowed."
+            . "`nCurrent setting is " . settings.selectSingleNode("/hostMonitor/settings/maxThreads").text
+        if !userInput
+            return
         if userInput is not integer
         {
             MsgBox, This setting can only take an integer.
@@ -367,7 +382,11 @@ SettingsMenuHandler:
         node.text := userInput
     }
     else if (A_ThisMenuItem == "Change Check &Interval"){
-        InputBox, userInput, Change Check Interval, % "Enter a check interval in seconds.`nSuggest 30 or higher."
+        InputBox, userInput, Change Check Interval, % "Enter a check interval in seconds."
+            . "`nSuggest 30 or higher."
+            . "`nCurrent setting is " . settings.selectSingleNode("/hostMonitor/settings/checkInterval").text
+        if !userInput
+            return
         if userInput is not integer
         {
             MsgBox, This setting can only take an integer.
@@ -379,7 +398,11 @@ SettingsMenuHandler:
         node.text := userInput
     }
     else if (A_ThisMenuItem == "Change Ping &Average Count"){
-        InputBox, userInput, Change Ping Average Count, % "Enter an averaging count.`nSuggest 10 - 50."
+        InputBox, userInput, Change Ping Average Count, % "Enter an averaging count."
+            . "`nSuggest 10 - 50."
+            . "`nCurrent setting is " . settings.selectSingleNode("/hostMonitor/settings/pingAvgCount").text
+        if !userInput
+            return
         if userInput is not integer
         {
             MsgBox, This setting can only take an integer.
@@ -395,6 +418,9 @@ SettingsMenuHandler:
     }
     else if (A_ThisMenuItem == "Change &Warning Latency"){
         InputBox, userInput, Change Ping Average Count, % "Enter a high latency warning level."
+            . "`nCurrent setting is " . settings.selectSingleNode("/hostMonitor/settings/warnLatency").text
+        if !userInput
+            return
         if userInput is not integer
         {
             MsgBox, This setting can only take an integer.
