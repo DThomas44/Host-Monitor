@@ -31,4 +31,4 @@ To compile the script into an exe to use on any computer:
    -inc\traceRt.exe  
    -inc\settings.xml  
    -inc\transform.xslt  
-   -Logs\(current timestamp)
+   -Logs\ (current timestamp).txt
