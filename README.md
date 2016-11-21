@@ -16,8 +16,9 @@ To compile the script into an exe to use on any computer:
 
 3. Extract the zip and Run the Build.ahk script.
 
-4. Copy the resulting Host Monitor.exe file from the bin folder.  
-   This is the only file needed, as it contains all resources required, and will create the related files on first run.
+4. Copy the resulting Host Monitor.exe file from the bin folder to the computer that needs to run the script.  
+   This is the only file needed, as it contains all resources required, and will create the related files on first run.  
+   The resulting exe does not require AutoHotkey to be installed on a computer to run.
 
 5. Run Host Monitor.exe  
    This will create the folowing list of files:  
