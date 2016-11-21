@@ -15,6 +15,27 @@
 #NoEnv
 SetBatchLines, -1
 
+;<=====  FileInstalls  ========================================================>
+;Images
+IfNotExist, % A_ScriptDir . "\img"
+    FileCreateDir, % A_ScriptDir . "\img"
+FileInstall, img\Green.jpg, img\Green.jpg, 1
+FileInstall, img\Yellow.jpg, img\Yellow.jpg, 1
+FileInstall, img\Red.jpg, img\Red.jpg, 1
+FileInstall, img\Host Monitor.ico, img\Host Monitor.ico, 1
+
+;Tools
+IfNotExist, % A_ScriptDir . "\inc"
+    FileCreateDir, % A_ScriptDir . "\inc"
+FileInstall, temp\pingGraph.exe, inc\pingGraph.exe, 1
+FileInstall, temp\pingMsg.exe, inc\pingMsg.exe, 1
+FileInstall, temp\traceRt.exe, inc\traceRt.exe, 1
+
+;Settings & Misc
+FileInstall, inc\defaultSettings.xml, inc\settings.xml, 0
+FileInstall, inc\transform.xslt, inc\transform.xslt, 1
+FileInstall, hosts.txt, hosts.txt, 0
+
 ;<=====  Startup  =============================================================>
 ;Receive messages from slave scripts and Windows
 OnMessage(0x4a, "Receive_WM_COPYDATA")
@@ -286,7 +307,7 @@ GuiClose:
     return
 
 GuiContextMenu:
-    host := hosts[subStr(A_GuiControl, 2), "name"]
+    host := hosts[subStr(A_GuiControl, 2), "ip"]
     if host
         Menu, ContextMenu, Show
     return
@@ -504,7 +525,7 @@ LoadXML(file){
     doc.async := false
     if !doc.loadXML(xml)
     {
-        MsgBox, Could not load settings XML!
+        MsgBox, % "Could not load" . file . "!"
     }
 
     return doc
