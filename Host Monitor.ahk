@@ -19,9 +19,9 @@ SetBatchLines, -1
 ;Images
 IfNotExist, % A_ScriptDir . "\img"
     FileCreateDir, % A_ScriptDir . "\img"
-FileInstall, img\Green.jpg, img\Green.jpg, 1
-FileInstall, img\Yellow.jpg, img\Yellow.jpg, 1
-FileInstall, img\Red.jpg, img\Red.jpg, 1
+;FileInstall, img\Green.jpg, img\Green.jpg, 1
+;FileInstall, img\Yellow.jpg, img\Yellow.jpg, 1
+;FileInstall, img\Red.jpg, img\Red.jpg, 1
 FileInstall, img\Host Monitor.ico, img\Host Monitor.ico, 1
 
 ;Tools
@@ -40,6 +40,10 @@ FileInstall, hosts.txt, hosts.txt, 0
 ;Receive messages from slave scripts and Windows
 OnMessage(0x4a, "Receive_WM_COPYDATA")
 OnMessage(0x200, "WM_MOUSEMOVE") ; Tooltips
+
+;Allcate console so we don't have constant flashing windows while pinging
+DllCall("AllocConsole")
+WinHide % "ahk_id " DllCall("GetConsoleWindow", "ptr")
 
 ;Make sure we are exiting nicely
 OnExit, Exit
@@ -170,9 +174,9 @@ Menu, MenuBar, Add, &Help, :HelpMenu
 Menu, Tray, Icon, % A_ScriptDir . "\img\Host Monitor.ico"
 
 ;<=====  Load Images  =========================================================>
-hGreen := LoadPicture(A_ScriptDir . "\img\Green.jpg")
-hYellow := LoadPicture(A_ScriptDir . "\img\Yellow.jpg")
-hRed := LoadPicture(A_ScriptDir . "\img\Red.jpg")
+;hGreen := LoadPicture(A_ScriptDir . "\img\Green.jpg")
+;hYellow := LoadPicture(A_ScriptDir . "\img\Yellow.jpg")
+;hRed := LoadPicture(A_ScriptDir . "\img\Red.jpg")
 
 ;<=====  GUI  =================================================================>
 Gui, Margin, 5, 5
@@ -187,18 +191,21 @@ Loop % hosts.MaxIndex() {
         RowY := 5
     }
 
-    Gui, Add, Picture, % "x" RowX " y" RowY " w" boxWidth " 0x4000000 gDummyLabel vi"
-        . A_Index, % "HBITMAP:*" hYellow
+    ;Gui, Add, Picture, % "x" RowX " y" RowY " w" boxWidth " 0x4000000 gDummyLabel vi"
+    ;    . A_Index, % "HBITMAP:*" hYellow
+
+    Gui, Add, Progress, % "x" RowX " y" RowY " w" boxWidth " h" boxHeight " vi"
+        . A_Index " cYellow", 100
 
     if hosts[A_Index, "alias"] {
-        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt"
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +0x200 +BackgroundTrans vt"
             . A_Index . " +Center", % subStr(hosts[A_Index, "alias"], 1, 25)
     }
     else {
-        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +BackgroundTrans vt"
+        Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +0x200 +BackgroundTrans vt"
             . A_Index . " +Center", % subStr(hosts[A_Index, "name"], 1, 25)
     }
-    Gui, Add, Text, % "xp yp+15 w140 h15 gDummyLabel +BackgroundTrans vs"
+    Gui, Add, Text, % "xp yp+15 w140 h15 gDummyLabel +0x200 +BackgroundTrans vs"
         . A_Index . " +Center", % hosts[A_Index, "lastSeen"]
     hosts[A_Index, "bgImageID"] := "i" . A_Index
     hosts[A_Index, "nameTextID"] := "t" . A_Index
@@ -614,7 +621,8 @@ Receive_WM_COPYDATA(wParam, lParam){
         ;Update BGImage. Yellow if above warnLatency, green otherwise
         if (strReplace(reply[3], "ms") >= settings.selectSingleNode("/hostMonitor/settings/warnLatency").text)
         {
-            GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hYellow
+            ;GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hYellow
+            GuiControl, +cYellow, % hosts[reply[1], "bgImageID"],
 
             ;Log warnings to file if enabled.
             if settings.selectSingleNode("/hostMonitor/settings/logging").text
@@ -622,7 +630,15 @@ Receive_WM_COPYDATA(wParam, lParam){
         }
         else
         {
-            GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hGreen
+            ;GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hGreen
+            GuiControl, +cGreen, % hosts[reply[1], "bgImageID"],
+        }
+
+        ;Refresh host text
+        if hosts[reply[1], "alias"] {
+            GuiControl,, % hosts[reply[1], "nameTextID"], % hosts[reply[1], "alias"]
+        } else {
+            GuiControl,, % hosts[reply[1], "nameTextID"], % hosts[reply[1], "name"]
         }
 
         ;Update status text
@@ -640,7 +656,15 @@ Receive_WM_COPYDATA(wParam, lParam){
         hosts[reply[1]].pingArray.Push(9999)
 
         ;Update BGImage to red
-        GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hRed
+        ;GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hRed
+        GuiControl, +cRed, % hosts[reply[1], "bgImageID"],
+
+        ;Refresh host text
+        if hosts[reply[1], "alias"] {
+            GuiControl,, % hosts[reply[1], "nameTextID"], % hosts[reply[1], "alias"]
+        } else {
+            GuiControl,, % hosts[reply[1], "nameTextID"], % hosts[reply[1], "name"]
+        }
 
         ;Update status text
         GuiControl,, % hosts[reply[1], "statusTextID"], % "Last Seen: " . hosts[reply[1], "lastSeen"]
@@ -697,7 +721,17 @@ StaleThreads(){
             ;if found, color the BG yellow & set text
             if (hostThreadID == tid)
             {
-                GuiControl,, % hosts[hostID, "bgImageID"], % "HBITMAP:*" hYellow
+                ;GuiControl,, % hosts[hostID, "bgImageID"], % "HBITMAP:*" hYellow
+                GuiControl, +cYellow, % hosts[hostID, "bgImageID"],
+
+               ;Refresh host text
+                if hosts[hostID, "alias"] {
+                    GuiControl,, % hosts[hostID, "nameTextID"], % hosts[reply[1], "alias"]
+                } else {
+                    GuiControl,, % hosts[hostID, "nameTextID"], % hosts[reply[1], "name"]
+                }
+
+                ;Update status text
                 GuiControl,, % hosts[hostID, "statusTextID"], % "Thread lost..."
                 threads.RemoveAt(A_Index)
             }

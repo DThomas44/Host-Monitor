@@ -18,7 +18,7 @@ ListLines, Off
 ;Receive messages from slave scripts
 OnMessage(0x4a, "Receive_WM_COPYDATA")
 
-;Allcate console so we don't have constant flashing windows while pinging
+;Allcate console so we don't have blank console windows when launching tools
 DllCall("AllocConsole")
 WinHide % "ahk_id " DllCall("GetConsoleWindow", "ptr")
 
@@ -53,19 +53,56 @@ LogResults:
     Gui, Submit, NoHide
     if LogResults
     {
-        logFile := A_ScriptDir . "\..\Logs\" . host . "_" . A_DD . A_MM . A_Hour . A_Min . ".txt"
-        GuiControl,, LogFileText, % logFile
+        logFile := LogStart(host)
+        GuiControl,, LogFileText, % host . "_" . A_DD . A_MM . A_Hour . A_Min . ".txt"
     }
     else
         GuiControl,, LogFileText,
     Return
 
 Ping:
-    Run, % A_ScriptDir . "\PingMsg.ahk """ . A_ScriptName . """ "
-        . host . " " . A_Index,, Hide, threadID
+    if A_IsCompiled {
+        Run, % A_ScriptDir . "\PingMsg.exe """ . A_ScriptName . """ "
+            . host . " " . A_Index,, Hide, threadID
+    }
+    else {
+        Run, % A_ScriptDir . "\PingMsg.ahk """ . A_ScriptName . """ "
+            . host . " " . A_Index,, Hide, threadID
+    }
     Return
 
 ;<=====  Functions  ===========================================================>
+Log(fileName, text){
+    FormatTime, TimeStamp, A_Now, [dd/MMM/yyyy HH:mm:ss]
+    logFile := fileOpen(fileName, "a")
+    logFile.Write(TimeStamp . " " . text . "`r`n")
+    logFile.Close()
+    return 1
+}
+
+LogStart(host){
+    IfNotExist, % A_ScriptDir . "\Logs\"
+        FileCreateDir, % A_ScriptDir . "\Logs"
+    fileName := A_ScriptDir . "\..\Logs\" . host . "_" . A_DD . A_MM . A_Hour . A_Min . ".txt"
+    Try {
+        logFile := fileOpen(fileName, "w")
+    }
+    catch e {
+        MsgBox, Failed to open file for logging!`n%A_LastError%
+    }
+    logFile.Write("[" . TimeStamp . "] Logging started on " . host . ".`r`n")
+    logFile.Close()
+    return fileName
+}
+
+LogStop(fileName){
+    FormatTime, TimeStamp, A_Now, [dd/MMM/yyyy HH:mm:ss]
+    logFile := fileOpen(fileName, "a")
+    logFile.Write(TimeStamp . " Logging finished.`r`n")
+    logFile.Close()
+    return 1
+}
+
 Receive_WM_COPYDATA(wParam, lParam){
     Global
     StringAddress := NumGet(lParam + 2*A_PtrSize)
@@ -75,9 +112,13 @@ Receive_WM_COPYDATA(wParam, lParam){
     {
         ;Good return
         XGraph_Plot(pGraph1, 100 - strReplace(reply[3], "ms"))
+        if LogResults
+            Log(logFile, reply[3] . "ms")
     } else {
         ;Timeout
         XGraph_Plot(pGraph1, 9999)
+        if LogResults
+            Log(logFile, "TIMEOUT")
     }
     return true
 }
