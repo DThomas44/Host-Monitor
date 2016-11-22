@@ -58,3 +58,16 @@ HostMonitor Change Log
     Logging system now starts a new log at midnight
     Changed File/Open Log File to Open Log Folder as we now potentially generate several log files
     Corrected settings dialogs hadling of cancel/close giving errors related in input validation
+
+11-15-2016
+    Changed GuiContextMenu to get IP instead of host name
+
+11-21-2016
+    Added FileInstall lines for compiling
+    Added Build.ahk to simplify compilation process
+
+11-22-2016
+    Added logging to pingGraph.ahk
+    Pre-allocated console in main script to prevent blank console windows opening when running tools/programs
+    Changed to using ProgressBar instead of images for background colors
+    Added refresh of host name text control to keep it on top of ProgressBar when updating
