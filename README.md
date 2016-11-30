@@ -23,9 +23,6 @@ To compile the script into an exe to use on any computer:
 5. Run Host Monitor.exe  
    This will create the folowing list of files:  
    -hosts.txt  
-   -img\Green.jpg  
-   -img\Red.jpg  
-   -img\Yellow.jpg  
    -img\Host Monitor.ico  
    -inc\pingGraph.exe  
    -inc\pingMsg.exe  
