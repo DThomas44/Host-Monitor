@@ -71,3 +71,11 @@ HostMonitor Change Log
     Pre-allocated console in main script to prevent blank console windows opening when running tools/programs
     Changed to using ProgressBar instead of images for background colors
     Added refresh of host name text control to keep it on top of ProgressBar when updating
+
+12-01-2016
+    Fixed GuiRows set to 0 not doing anything
+    Changed "good" color from green to lime for better visibility
+    Changed main GUI show commands to allow width greater that monitor working area (multi-monitor support, more than 252 hosts now supported)
+    Added shares.ahk by Grendahl - Lists all shares (even hidden) on a Windows host
+    Added requesting of username & password on launch. Credentials are encrypted and stored in settings.xml file
+    Added crypt1 and crypt2 (found by Grendahl). Files for reference only, functions added to main script

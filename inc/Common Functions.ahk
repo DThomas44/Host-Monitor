@@ -26,14 +26,14 @@ enumObj(Obj, indent := 0){
 	return strOut
 }
 
-;<=====  trimString  =========================================================>
+;<=====  strTrim  =============================================================>
 ;Trims whitespace from start and end of a string.
 strTrim(string){
 	string = %string%
 	return string
 }
 
-;<=====  padLeft  ============================================================>
+;<=====  padLeft  =============================================================>
 ;Pads a string on the left with the designated character, or spaces if not provided.
 padLeft(string, len, char := "%A_Space%"){
 	while (strLen(string) < len)
@@ -41,7 +41,7 @@ padLeft(string, len, char := "%A_Space%"){
 	return string
 }
 
-;<=====  padRight  ===========================================================>
+;<=====  padRight  ============================================================>
 ;Pads a string on the right with the designated character, or spaces if not provided.
 padRight(string, len, char := "%A_Space%"){
 	while (strLen(string) < len)
@@ -49,7 +49,7 @@ padRight(string, len, char := "%A_Space%"){
 	return string
 }
 
-;<===== secToTime  ===========================================================>
+;<===== secToTime  ============================================================>
 ;Converts a value in seconds to hh:mm:ss
 secToTime(sec){
 	strOut := ""

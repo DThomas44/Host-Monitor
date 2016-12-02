@@ -19,9 +19,6 @@ SetBatchLines, -1
 ;Images
 IfNotExist, % A_ScriptDir . "\img"
     FileCreateDir, % A_ScriptDir . "\img"
-;FileInstall, img\Green.jpg, img\Green.jpg, 1
-;FileInstall, img\Yellow.jpg, img\Yellow.jpg, 1
-;FileInstall, img\Red.jpg, img\Red.jpg, 1
 FileInstall, img\Host Monitor.ico, img\Host Monitor.ico, 1
 
 ;Tools
@@ -53,6 +50,9 @@ OnExit, Exit
 boxWidth := 150
 boxHeight := 45
 
+;Crypt Seed
+seed := "-pl,ZAQ!mko0XSW@6YhB"
+
 ;Read in settings.xml
 settings := loadXML(A_ScriptDir . "\inc\settings.xml")
 
@@ -71,6 +71,28 @@ if (settings.selectSingleNode("/hostMonitor/settings/guiRows").text > maxRows) {
 }
 
 ;<=====  Read in hostList  ====================================================>
+;Prompt for username/password if not saved.
+while !settings.selectSingleNode("/hostMonitor/settings/username").text
+{
+    GetCredentials:
+        InputBox, userInput, Enter administrator account.`n(for domains use domain\account)`nCancel to be prompted when needed.
+        InputBox, userInput2, Enter administrator password.
+        if !userInput || !userInput2
+        {
+            MsgBox, 4,, No username or password entered.`nSelecting "Explore Shares" will prompt for username & password.`n`nDo you want to save a username & password?
+            IfMsgBox, Yes
+                GoSub, GetCredentials
+            Else
+                Break
+        } else {
+            node := settings.selectSingleNode("/hostMonitor/settings/username")
+            node.text := Code(userInput, seed)
+            node := settings.selectSingleNode("/hostMonitor/settings/password")
+            node.text := Code(userInput2, seed)
+            SaveSettings(settings, tdoc)
+        }
+}
+
 ;Prompt for host file if not saved.
 while !settings.selectSingleNode("/hostMonitor/settings/hostPath").text
 {
@@ -124,7 +146,7 @@ Menu, ContextMenu, Add, Ping Graph, ContextMenuHandler
 Menu, ContextMenu, Add
 Menu, ContextMenu, Add, RDP, ContextMenuHandler
 Menu, ContextMenu, Add
-Menu, ContextMenu, Add, Explore C:, ContextMenuHandler
+Menu, ContextMenu, Add, Explore Shares, ContextMenuHandler
 Menu, ContextMenu, Add
 Menu, ContextMenu, Add, Browse, ContextMenuHandler
 Menu, ContextMenu, Add, Browse (https), ContextMenuHandler
@@ -173,11 +195,6 @@ Menu, MenuBar, Add, &Help, :HelpMenu
 ;Tray Menu
 Menu, Tray, Icon, % A_ScriptDir . "\img\Host Monitor.ico"
 
-;<=====  Load Images  =========================================================>
-;hGreen := LoadPicture(A_ScriptDir . "\img\Green.jpg")
-;hYellow := LoadPicture(A_ScriptDir . "\img\Yellow.jpg")
-;hRed := LoadPicture(A_ScriptDir . "\img\Red.jpg")
-
 ;<=====  GUI  =================================================================>
 Gui, Margin, 5, 5
 Gui, Menu, MenuBar
@@ -190,9 +207,6 @@ Loop % hosts.MaxIndex() {
         RowX += 155
         RowY := 5
     }
-
-    ;Gui, Add, Picture, % "x" RowX " y" RowY " w" boxWidth " 0x4000000 gDummyLabel vi"
-    ;    . A_Index, % "HBITMAP:*" hYellow
 
     Gui, Add, Progress, % "x" RowX " y" RowY " w" boxWidth " h" boxHeight " vi"
         . A_Index " cYellow", 100
@@ -225,10 +239,11 @@ if (RowX < 100) {
 else {
     if settings.selectSingleNode("/hostMonitor/settings/rememberPos").text {
         Gui, Show, % "x" . settings.selectSingleNode("/hostMonitor/settings/winX").text
-            . " y" . settings.selectSingleNode("/hostMonitor/settings/winY").text, Host Monitor
+            . " y" . settings.selectSingleNode("/hostMonitor/settings/winY").text
+            . " w" . (RowX + boxWidth + 5), Host Monitor
     }
     else
-        Gui, Show, Center, Host Monitor
+        Gui, Show, % "Center w" . (RowX + boxWidth + 5) , Host Monitor
 }
 
 ;<=====  Timers  ==============================================================>
@@ -277,8 +292,8 @@ ContextMenuHandler:
         StartPingGraph(host)
     else if (A_ThisMenuItem == "RDP")
         Run, % "mstsc /v:" . host
-    else if (A_ThisMenuItem == "Explore C:")
-        Run, % "explore \\" . host . "\c$"
+    else if (A_ThisMenuItem == "Explore Shares")
+        ExploreShares(host)
     else if (A_ThisMenuItem == "Browse")
         Run, % "http://" . host
     else if (A_ThisMenuItem == "Browse (https)")
@@ -378,8 +393,6 @@ SettingsMenuHandler:
         InputBox, userInput, Change GUI Rows, % "Enter a row count between 1 and "
             . maxRows . ".`nSet to 0 for AutoSize based on monitor work area and host count."
             . "`nCurrent setting is " . settings.selectSingleNode("/hostMonitor/settings/guiRows").text
-        if !userInput
-            return
         if userInput is not integer
         {
             MsgBox, This setting can only take an integer.
@@ -513,6 +526,33 @@ CheckHosts(){
     SetTimer, StaleThreads, % (((settings.selectSingleNode("/hostMonitor/settings/checkInterval").text) / 2) * 1000)
 }
 
+Code(String, Seed){ ;Encrypt a string using Mersenne Twister
+    Random,, Seed
+    Loop, Parse, String
+    {
+        Random x, 1, 1000000
+        Random y, 1, 1000000
+        newString .= (Asc(A_loopfield)+x) y
+    }
+    return newString
+}
+
+ExploreShares(host){
+    Global settings, seed
+    if A_IsCompiled
+    {
+        Run, % A_ScriptDir . "\inc\shares.exe " . host . " "
+            . Uncode(settings.selectSingleNode("/hostMonitor/settings/username").text, seed) . " "
+            . Uncode(settings.selectSingleNode("/hostMonitor/settings/password").text, seed)
+    }
+    else
+    {
+        Run, % A_ScriptDir . "\inc\shares.ahk " . host . " "
+            . Uncode(settings.selectSingleNode("/hostMonitor/settings/username").text, seed) . " "
+            . Uncode(settings.selectSingleNode("/hostMonitor/settings/password").text, seed)
+    }
+}
+
 ;FlushDNS by jNizM
 FlushDNS(){
     if !(DllCall("dnsapi.dll\DnsFlushResolverCache"))
@@ -621,7 +661,6 @@ Receive_WM_COPYDATA(wParam, lParam){
         ;Update BGImage. Yellow if above warnLatency, green otherwise
         if (strReplace(reply[3], "ms") >= settings.selectSingleNode("/hostMonitor/settings/warnLatency").text)
         {
-            ;GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hYellow
             GuiControl, +cYellow, % hosts[reply[1], "bgImageID"],
 
             ;Log warnings to file if enabled.
@@ -630,8 +669,7 @@ Receive_WM_COPYDATA(wParam, lParam){
         }
         else
         {
-            ;GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hGreen
-            GuiControl, +cGreen, % hosts[reply[1], "bgImageID"],
+            GuiControl, +cLime, % hosts[reply[1], "bgImageID"],
         }
 
         ;Refresh host text
@@ -656,7 +694,6 @@ Receive_WM_COPYDATA(wParam, lParam){
         hosts[reply[1]].pingArray.Push(9999)
 
         ;Update BGImage to red
-        ;GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hRed
         GuiControl, +cRed, % hosts[reply[1], "bgImageID"],
 
         ;Refresh host text
@@ -721,7 +758,6 @@ StaleThreads(){
             ;if found, color the BG yellow & set text
             if (hostThreadID == tid)
             {
-                ;GuiControl,, % hosts[hostID, "bgImageID"], % "HBITMAP:*" hYellow
                 GuiControl, +cYellow, % hosts[hostID, "bgImageID"],
 
                ;Refresh host text
@@ -768,6 +804,19 @@ StartPutty(host, mode){
     objShell := ComObjCreate("WScript.Shell")
     objExec := objShell.Exec(ComSpec . " /c .\inc\putty.exe -" . mode . " "
         . host . " " . ((mode == "ssh")?22:(mode == "telnet")?23:""))
+}
+
+Uncode(String, Seed) { ;Decrept a Mersenne Twister encrypted string
+    Random,, Seed
+    while StrLen(String)>0
+    {
+        Random x, 1, 1000000
+        Random y, 1, 1000000
+        Pos := InStr(String, y)
+        oldString .= Chr(SubStr(String, 1, Pos-1)-x)
+        String := SubStr(String, Pos+StrLen(y))
+    }
+    return oldString
 }
 
 WM_MOUSEMOVE() {
