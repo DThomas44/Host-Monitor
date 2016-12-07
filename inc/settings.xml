@@ -6,11 +6,13 @@
 		<checkInterval>60</checkInterval>
 		<pingAvgCount>10</pingAvgCount>
 		<autoTraceRt>0</autoTraceRt>
-		<logging>1</logging>
+		<logging>0</logging>
 		<rememberPos>1</rememberPos>
 		<winX>10</winX>
 		<winY>10</winY>
-		<warnLatency>30</warnLatency>
+		<warnLatency>50</warnLatency>
 		<hostPath></hostPath>
+		<userName></userName>
+		<userPass></userPass>
 	</settings>
 </hostMonitor>

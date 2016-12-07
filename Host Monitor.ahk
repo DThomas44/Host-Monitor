@@ -124,7 +124,7 @@ Menu, ContextMenu, Add, Ping Graph, ContextMenuHandler
 Menu, ContextMenu, Add
 Menu, ContextMenu, Add, RDP, ContextMenuHandler
 Menu, ContextMenu, Add
-Menu, ContextMenu, Add, Explore C:, ContextMenuHandler
+Menu, ContextMenu, Add, Explore Shares, ContextMenuHandler
 Menu, ContextMenu, Add
 Menu, ContextMenu, Add, Browse, ContextMenuHandler
 Menu, ContextMenu, Add, Browse (https), ContextMenuHandler
@@ -199,7 +199,7 @@ Loop % hosts.MaxIndex() {
 
     if hosts[A_Index, "alias"] {
         Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +0x200 +BackgroundTrans vt"
-            . A_Index . " +Center", % subStr(hosts[A_Index, "alias"], 1, 25)
+            . A_Index . " +Center" , % subStr(hosts[A_Index, "alias"], 1, 25)
     }
     else {
         Gui, Add, Text, % "xp+5 yp+5 w140 h15 gDummyLabel +0x200 +BackgroundTrans vt"
@@ -277,12 +277,15 @@ ContextMenuHandler:
         StartPingGraph(host)
     else if (A_ThisMenuItem == "RDP")
         Run, % "mstsc /v:" . host
-    else if (A_ThisMenuItem == "Explore C:")
-        Run, % "explore \\" . host . "\c$"
+    else if (A_ThisMenuItem == "Explore Shares") {
+        hostName := IPHelper.ReverseLookup(host)
+        StringSplit, hostName, hostName,.
+        Run, % A_ScriptDir "\inc\Shares.ahk " . hostName1
+    }
     else if (A_ThisMenuItem == "Browse")
-        Run, % "http://" . host
+        Run, % "http://" . hosts[reply[1], "name"], % subStr(hosts[reply[1], "name"], 1, 25)
     else if (A_ThisMenuItem == "Browse (https)")
-        Run, % "https://" . host
+        Run, % "https://" . hosts[reply[1], "name"], % subStr(hosts[reply[1], "name"], 1, 25)
     else if (A_ThisMenuItem == "SSH")
         StartPutty(host, "ssh")
     else if (A_ThisMenuItem == "Telnet")
@@ -631,7 +634,7 @@ Receive_WM_COPYDATA(wParam, lParam){
         else
         {
             ;GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hGreen
-            GuiControl, +cGreen, % hosts[reply[1], "bgImageID"],
+            GuiControl, +cLime, % hosts[reply[1], "bgImageID"],
         }
 
         ;Refresh host text
@@ -797,3 +800,5 @@ WM_MOUSEMOVE() {
 ;<=====  Includes  ============================================================>
 #Include %A_ScriptDir%\inc
 #Include Common Functions.ahk
+#Include IPHelper.ahk
+
