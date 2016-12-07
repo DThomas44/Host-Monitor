@@ -31,9 +31,10 @@ If(!Host) {
 
 StringUpper, Host, Host
 
-;Read userName and userPass from settings.xml
+;Read settings.xml
 encryptedUser := settings.selectSingleNode("/hostMonitor/settings/userName").text
 encryptedPass := settings.selectSingleNode("/hostMonitor/settings/userPass").text
+useCreds := settings.selectSingleNode("/hostMonitor/settings/useCreds").text
 
 ;If there userName or userPass settings don't exist, go make some
 If(!encryptedUser || !encryptedPass)
@@ -75,17 +76,19 @@ Explore:
 	Share := " \\" . Host . "\" . Share
 	Gui, Destroy
 	Run, explorer %Share%
-	Loop 20
-	{
-		Sleep 500
-		IfWinExist, Windows Security
+	If(useCreds=1) {
+		Loop 20
 		{
-			WinActivate, Windows Security
-			WinWaitActive, Windows Security
 			Sleep 500
-			Send, %User%{TAB}%Pass%{ENTER}
-			Break
-		}	
+			IfWinExist, Windows Security
+			{
+				WinActivate, Windows Security
+				WinWaitActive, Windows Security
+				Sleep 500
+				Send, %User%{TAB}%Pass%{ENTER}
+				Break
+			}	
+		}
 	}
 ExitApp
 
