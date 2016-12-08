@@ -12,7 +12,7 @@
 		<winY>10</winY>
 		<warnLatency>50</warnLatency>
 		<hostPath></hostPath>
-		<useCreds>0</useCreds>
+		<useCreds>1</useCreds>
 		<userName></userName>
 		<userPass></userPass>
 	</settings>
