@@ -158,6 +158,9 @@ if settings.selectSingleNode("/hostMonitor/settings/autoTraceRt").text
 Menu, SettingsMenu, Add, Remember &Window Pos, SettingsMenuHandler
 if settings.selectSingleNode("/hostMonitor/settings/rememberPos").text
     Menu, SettingsMenu, Check, Remember &Window Pos
+Menu, SettingsMenu, Add, Pass &Credentials to Shares, SettingsMenuHandler
+if settings.selectSingleNode("/hostMonitor/settings/useCreds").text
+    Menu, SettingsMenu, Check, Pass &Credentials to Shares
 Menu, SettingsMenu, Add
 Menu, SettingsMenu, Add, Change GUI &Rows, SettingsMenuHandler
 Menu, SettingsMenu, Add, Change Max &Threads, SettingsMenuHandler
@@ -375,6 +378,11 @@ SettingsMenuHandler:
     else if (A_ThisMenuItem == "Remember &Window Pos"){
         Menu, SettingsMenu, ToggleCheck, Remember &Window Pos
         node := settings.selectSingleNode("/hostMonitor/settings/rememberPos")
+        node.text := !node.text
+    }
+    else if (A_ThisMenuItem == "Pass &Credentials to Shares"){
+        Menu, SettingsMenu, ToggleCheck, Pass &Credentials to Shares
+        node := settings.selectSingleNode("/hostMonitor/settings/useCreds")
         node.text := !node.text
     }
     else if (A_ThisMenuItem == "Change GUI &Rows"){
