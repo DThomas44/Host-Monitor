@@ -85,7 +85,10 @@ Explore:
 				WinActivate, Windows Security
 				WinWaitActive, Windows Security
 				Sleep 500
-				Send, %User%{TAB}%Pass%{ENTER}
+				SendRaw %User%
+				Send {TAB}
+				SendRaw %Pass%
+				Send {ENTER}
 				Break
 			}	
 		}
