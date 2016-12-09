@@ -12,5 +12,8 @@
         <winY>10</winY>
         <warnLatency>60</warnLatency>
         <hostPath></hostPath>
+	<useCreds>1</useCreds>
+	<userName></userName>
+	<userPass></userPass>
     </settings>
 </hostMonitor>
