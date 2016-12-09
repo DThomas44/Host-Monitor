@@ -36,10 +36,6 @@ FileInstall, inc\defaultSettings.xml, inc\settings.xml, 0
 FileInstall, inc\transform.xslt, inc\transform.xslt, 1
 FileInstall, hosts.txt, hosts.txt, 0
 
-;Clean up file blocking
-Loop, %A_WorkingDir%\*.*, 0, 1 ;Loop all files from A_WorkingDir and subdirectories
-    FileDelete, fileName:Zone.Identifier$DATA ;Remove Zone Identifier Data to Unblock file
-
 ;<=====  Startup  =============================================================>
 ;Receive messages from slave scripts and Windows
 OnMessage(0x4a, "Receive_WM_COPYDATA")
