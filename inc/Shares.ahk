@@ -108,7 +108,7 @@ SaveCreds:
         node.text := Pass
         SaveSettings(settings, tdoc)	
 	notEncrypted = 0
-	Run, Shares.ahk %Host%
+	Run, % A_ScriptFullPath . " " . Host
 ExitApp
 
 GuiClose:
