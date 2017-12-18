@@ -19,9 +19,6 @@ SetBatchLines, -1
 ;Images
 IfNotExist, % A_ScriptDir . "\img"
     FileCreateDir, % A_ScriptDir . "\img"
-;FileInstall, img\Green.jpg, img\Green.jpg, 1
-;FileInstall, img\Yellow.jpg, img\Yellow.jpg, 1
-;FileInstall, img\Red.jpg, img\Red.jpg, 1
 FileInstall, img\Host Monitor.ico, img\Host Monitor.ico, 1
 
 ;Tools
@@ -152,6 +149,9 @@ Menu, SettingsMenu, Add
 Menu, SettingsMenu, Add, &Logging, SettingsMenuHandler
 if settings.selectSingleNode("/hostMonitor/settings/logging").text
     Menu, SettingsMenu, Check, &Logging
+Menu, SettingsMenu, Add, &Verbose Logging, SettingsMenuHandler
+if settings.selectSingleNode("/hostMonitor/settings/verbose").text
+    Menu, SettingsMenu, Check, &Verbose Logging
 Menu, SettingsMenu, Add, Auto &TraceRt, SettingsMenuHandler
 if settings.selectSingleNode("/hostMonitor/settings/autoTraceRt").text
     Menu, SettingsMenu, Check, Auto &TraceRt
@@ -173,11 +173,6 @@ Menu, MenuBar, Add, &Help, :HelpMenu
 ;Tray Menu
 Menu, Tray, Icon, % A_ScriptDir . "\img\Host Monitor.ico"
 
-;<=====  Load Images  =========================================================>
-;hGreen := LoadPicture(A_ScriptDir . "\img\Green.jpg")
-;hYellow := LoadPicture(A_ScriptDir . "\img\Yellow.jpg")
-;hRed := LoadPicture(A_ScriptDir . "\img\Red.jpg")
-
 ;<=====  GUI  =================================================================>
 Gui, Margin, 5, 5
 Gui, Menu, MenuBar
@@ -190,9 +185,6 @@ Loop % hosts.MaxIndex() {
         RowX += 155
         RowY := 5
     }
-
-    ;Gui, Add, Picture, % "x" RowX " y" RowY " w" boxWidth " 0x4000000 gDummyLabel vi"
-    ;    . A_Index, % "HBITMAP:*" hYellow
 
     Gui, Add, Progress, % "x" RowX " y" RowY " w" boxWidth " h" boxHeight " vi"
         . A_Index " cYellow", 100
@@ -363,6 +355,15 @@ SettingsMenuHandler:
             logFile := LogStart(settings)
         else
             LogStop(logFile)
+    }
+    else if (A_ThisMenuItem == "&Verbose Logging"){
+        Menu, SettingsMenu, ToggleCheck, &Verbose Logging
+        node := settings.selectSingleNode("/hostMonitor/settings/verbose")
+        node.text := !node.text
+        if node.text
+            Log(logFile, "<=====  Settings Changed: Verbose logging enabled  =====>")
+        else
+            Log(logFile, "<=====  Settings Changed: Verbose logging disabled  =====>")
     }
     else if (A_ThisMenuItem == "Auto &TraceRt"){
         Menu, SettingsMenu, ToggleCheck, Auto &TraceRt
@@ -621,7 +622,6 @@ Receive_WM_COPYDATA(wParam, lParam){
         ;Update BGImage. Yellow if above warnLatency, green otherwise
         if (strReplace(reply[3], "ms") >= settings.selectSingleNode("/hostMonitor/settings/warnLatency").text)
         {
-            ;GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hYellow
             GuiControl, +cYellow, % hosts[reply[1], "bgImageID"],
 
             ;Log warnings to file if enabled.
@@ -630,8 +630,11 @@ Receive_WM_COPYDATA(wParam, lParam){
         }
         else
         {
-            ;GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hGreen
             GuiControl, +cGreen, % hosts[reply[1], "bgImageID"],
+
+            ;Log reply to file if verbose is enabled.
+            if settings.selectSingleNode("/hostMonitor/settings/verbose").text
+                Log(logFile, hosts[reply[1], "name"] . " latency: " . reply[3] . "ms")
         }
 
         ;Refresh host text
@@ -656,7 +659,6 @@ Receive_WM_COPYDATA(wParam, lParam){
         hosts[reply[1]].pingArray.Push(9999)
 
         ;Update BGImage to red
-        ;GuiControl,, % hosts[reply[1], "bgImageID"], % "HBITMAP:*" hRed
         GuiControl, +cRed, % hosts[reply[1], "bgImageID"],
 
         ;Refresh host text

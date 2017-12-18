@@ -71,3 +71,7 @@ HostMonitor Change Log
     Pre-allocated console in main script to prevent blank console windows opening when running tools/programs
     Changed to using ProgressBar instead of images for background colors
     Added refresh of host name text control to keep it on top of ProgressBar when updating
+
+12-18-2017
+    Added verbose logging option
+    Cleaned up commented out lines from changing background images to using ProgressBar instead of pictures
