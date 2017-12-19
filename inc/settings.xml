@@ -2,14 +2,15 @@
 <hostMonitor>
 	<settings>
 		<guiRows>10</guiRows>
-		<maxThreads>250</maxThreads>
+		<maxThreads>100</maxThreads>
 		<checkInterval>60</checkInterval>
 		<pingAvgCount>10</pingAvgCount>
 		<autoTraceRt>0</autoTraceRt>
 		<logging>1</logging>
-		<rememberPos>1</rememberPos>
-		<winX>10</winX>
-		<winY>10</winY>
+		<verbose>0</verbose>
+		<rememberPos>0</rememberPos>
+		<winX>0</winX>
+		<winY>0</winY>
 		<warnLatency>30</warnLatency>
 		<hostPath></hostPath>
 	</settings>

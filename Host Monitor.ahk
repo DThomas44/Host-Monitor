@@ -294,12 +294,15 @@ DummyLabel:
 
 Exit:
 GuiClose:
-    WinGetPos, winX, winY,,, Host Monitor
-    node := settings.selectSingleNode("/hostMonitor/settings/winX")
-    node.text := winX
-    node := settings.selectSingleNode("/hostMonitor/settings/winY")
-    node.text := winY
-    SaveSettings(settings, tdoc)
+    if (settings.selectSingleNode("/hostMonitor/settings/rememberPos").text == 1)
+    {
+        WinGetPos, winX, winY,,, Host Monitor
+        node := settings.selectSingleNode("/hostMonitor/settings/winX")
+        node.text := winX
+        node := settings.selectSingleNode("/hostMonitor/settings/winY")
+        node.text := winY
+        SaveSettings(settings, tdoc)
+    }
     if settings.selectSingleNode("/hostMonitor/settings/logging").text
         LogStop(logFile)
     ExitApp
@@ -345,8 +348,15 @@ MenuHandler:
 
 SettingsMenuHandler:
     reloadScript := false
-    if (A_ThisMenuItem == "&Flush DNS")
-        MsgBox, % ((FlushDNS() == 1)?"DNS cache flushed.":"Failed to flush DNS cache.")
+    if (A_ThisMenuItem == "&Flush DNS"){
+        if FlushDNS(){
+            MsgBox, % "DNS cache flushed."
+            if settings.selectSingleNode("/hostMonitor/settings/logging").text
+                Log(logFile, "<=====  DNS cache flushed  =====>")
+        }
+        else
+            MsgBox, % "Failed to flush DNS cache."
+    }
     else if (A_ThisMenuItem == "&Logging"){
         Menu, SettingsMenu, ToggleCheck, &Logging
         node := settings.selectSingleNode("/hostMonitor/settings/logging")
@@ -361,9 +371,14 @@ SettingsMenuHandler:
         node := settings.selectSingleNode("/hostMonitor/settings/verbose")
         node.text := !node.text
         if node.text
-            Log(logFile, "<=====  Settings Changed: Verbose logging enabled  =====>")
-        else
-            Log(logFile, "<=====  Settings Changed: Verbose logging disabled  =====>")
+        {
+            if settings.selectSingleNode("/hostMonitor/settings/logging").text
+                Log(logFile, "<=====  Settings Changed: Verbose logging enabled  =====>")
+        }
+        else {
+            if settings.selectSingleNode("/hostMonitor/settings/logging").text
+                Log(logFile, "<=====  Settings Changed: Verbose logging disabled  =====>")
+        }
     }
     else if (A_ThisMenuItem == "Auto &TraceRt"){
         Menu, SettingsMenu, ToggleCheck, Auto &TraceRt
@@ -409,6 +424,8 @@ SettingsMenuHandler:
             userInput := 1
         node := settings.selectSingleNode("/hostMonitor/settings/maxThreads")
         node.text := userInput
+        if settings.selectSingleNode("/hostMonitor/settings/logging").text
+            Log(logFile, "<=====  Settings Changed: Max threads set to " . userInput . "  =====>")
     }
     else if (A_ThisMenuItem == "Change Check &Interval"){
         InputBox, userInput, Change Check Interval, % "Enter a check interval in seconds."
@@ -425,6 +442,8 @@ SettingsMenuHandler:
             userInput := 1
         node := settings.selectSingleNode("/hostMonitor/settings/checkInterval")
         node.text := userInput
+        if settings.selectSingleNode("/hostMonitor/settings/logging").text
+            Log(logFile, "<=====  Settings Changed: Check Interval set to " . userInput . " seconds  =====>")
     }
     else if (A_ThisMenuItem == "Change Ping &Average Count"){
         InputBox, userInput, Change Ping Average Count, % "Enter an averaging count."
@@ -447,7 +466,7 @@ SettingsMenuHandler:
     }
     else if (A_ThisMenuItem == "Change &Warning Latency"){
         InputBox, userInput, Change Ping Average Count, % "Enter a high latency warning level."
-            . "`nCurrent setting is " . settings.selectSingleNode("/hostMonitor/settings/warnLatency").text
+            . "`nCurrent setting is " . settings.selectSingleNode("/hostMonitor/settings/warnLatency").text . "ms."
         if !userInput
             return
         if userInput is not integer
@@ -457,6 +476,8 @@ SettingsMenuHandler:
         }
         node := settings.selectSingleNode("/hostMonitor/settings/warnLatency")
         node.text := userInput
+        if settings.selectSingleNode("/hostMonitor/settings/logging").text
+            Log(logFile, "<=====  Settings Changed: Warning Latency set to " . userInput . "ms  =====>")
     }
     else
         MsgBox, % "Settings menu system broke :("
@@ -558,7 +579,8 @@ LogStart(settings){
     catch e {
         MsgBox, Failed to open file for logging!`n%A_LastError%
     }
-    logFile.Write("[" . TimeStamp . "] Logging started. Using hosts file " . settings.selectSingleNode("/hostMonitor/settings/hostPath").text . "`r`n")
+    FormatTime, TimeStamp, A_Now, [dd/MMM/yyyy HH:mm:ss]
+    logFile.Write(TimeStamp . " Logging started. Using hosts file " . settings.selectSingleNode("/hostMonitor/settings/hostPath").text . "`r`n")
     logFile.Close()
     return fileName
 }

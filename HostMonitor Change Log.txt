@@ -75,3 +75,4 @@ HostMonitor Change Log
 12-18-2017
     Added verbose logging option
     Cleaned up commented out lines from changing background images to using ProgressBar instead of pictures
+    Added settings change notifications to logging

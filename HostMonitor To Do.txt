@@ -3,8 +3,8 @@ HostMonitor To Do:
 Do a proper about window
 From https://autohotkey.com/boards/viewtopic.php?f=6&t=23378&p=112339#p112339 :
     Look into adding graph on main window
-Add settings change notifications to logging for all settings that don't require a reload.
 Rework logging system to keep log file open during logging operations to reduce disk operations/improve performance.
     Open log when starting scan cycle, close after complete.
-
 Look into https://autohotkey.com/boards/viewtopic.php?f=6&t=6194 as a better way to multi-thread.
+Find cause of double entry for logging being finished when script is closed.
+    Only single entry if logging is stoped via menu.
