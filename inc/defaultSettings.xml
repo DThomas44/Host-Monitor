@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <hostMonitor>
     <settings>
+        <minimizeToTray>0</minimizeToTray>
+        <startMinimized>0</startMinimized>
         <guiRows>10</guiRows>
         <maxThreads>250</maxThreads>
         <checkInterval>60</checkInterval>
         <pingAvgCount>10</pingAvgCount>
         <autoTraceRt>0</autoTraceRt>
         <logging>1</logging>
+        <verbose>0</verbose>
         <rememberPos>1</rememberPos>
         <winX>10</winX>
         <winY>10</winY>
