@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <hostMonitor>
 	<settings>
+		<minimizeToTray>1</minimizeToTray>
+		<startMinimized>0</startMinimized>
 		<guiRows>10</guiRows>
 		<maxThreads>100</maxThreads>
 		<checkInterval>60</checkInterval>

@@ -145,6 +145,7 @@ Menu, HelpMenu, Add, &About, MenuHandler
 
 ;Settings Menu
 Menu, SettingsMenu, Add, &Flush DNS, SettingsMenuHandler
+
 Menu, SettingsMenu, Add
 Menu, SettingsMenu, Add, &Logging, SettingsMenuHandler
 if settings.selectSingleNode("/hostMonitor/settings/logging").text
@@ -155,9 +156,20 @@ if settings.selectSingleNode("/hostMonitor/settings/verbose").text
 Menu, SettingsMenu, Add, Auto &TraceRt, SettingsMenuHandler
 if settings.selectSingleNode("/hostMonitor/settings/autoTraceRt").text
     Menu, SettingsMenu, Check, Auto &TraceRt
+
+Menu, SettingsMenu, Add
 Menu, SettingsMenu, Add, Remember &Window Pos, SettingsMenuHandler
 if settings.selectSingleNode("/hostMonitor/settings/rememberPos").text
     Menu, SettingsMenu, Check, Remember &Window Pos
+Menu, SettingsMenu, Add, &Minimize to Tray, SettingsMenuHandler
+if settings.selectSingleNode("/hostMonitor/settings/minimizeToTray").text
+    Menu, SettingsMenu, Check, &Minimize to Tray
+Menu, SettingsMenu, Add, &Start Minimized, SettingsMenuHandler
+if settings.selectSingleNode("/hostMonitor/settings/startMinimized").text
+    Menu, SettingsMenu, Check, &Start Minimized
+if !settings.selectSingleNode("/hostMonitor/settings/minimizeToTray").text
+    Menu, SettingsMenu, Disable, &Start Minimized
+
 Menu, SettingsMenu, Add
 Menu, SettingsMenu, Add, Change GUI &Rows, SettingsMenuHandler
 Menu, SettingsMenu, Add, Change Max &Threads, SettingsMenuHandler
@@ -172,6 +184,11 @@ Menu, MenuBar, Add, &Help, :HelpMenu
 
 ;Tray Menu
 Menu, Tray, Icon, % A_ScriptDir . "\img\Host Monitor.ico"
+Menu, Tray, NoStandard
+Menu, Tray, Add, &Show GUI, TrayMenuHandler
+Menu, Tray, Add
+Menu, Tray, Standard
+Menu, Tray, Default, &Show GUI
 
 ;<=====  GUI  =================================================================>
 Gui, Margin, 5, 5
@@ -221,6 +238,10 @@ else {
     }
     else
         Gui, Show, Center, Host Monitor
+}
+if (settings.selectSingleNode("/hostMonitor/settings/startMinimized").text
+    && settings.selectSingleNode("/hostMonitor/settings/minimizeToTray").text){
+    Gui, Hide
 }
 
 ;<=====  Timers  ==============================================================>
@@ -293,7 +314,6 @@ DummyLabel:
     Return
 
 Exit:
-GuiClose:
     if (settings.selectSingleNode("/hostMonitor/settings/rememberPos").text == 1)
     {
         WinGetPos, winX, winY,,, Host Monitor
@@ -307,6 +327,15 @@ GuiClose:
         LogStop(logFile)
     ExitApp
     return
+
+GuiClose:
+    if (settings.selectSingleNode("/hostMonitor/settings/minimizeToTray").text == 1)
+    {
+        Gui, Hide
+    }
+    else
+        GoSub, Exit
+    Return
 
 GuiContextMenu:
     host := hosts[subStr(A_GuiControl, 2), "ip"]
@@ -388,6 +417,20 @@ SettingsMenuHandler:
     else if (A_ThisMenuItem == "Remember &Window Pos"){
         Menu, SettingsMenu, ToggleCheck, Remember &Window Pos
         node := settings.selectSingleNode("/hostMonitor/settings/rememberPos")
+        node.text := !node.text
+    }
+    else if (A_ThisMenuItem == "&Minimize to Tray"){
+        Menu, SettingsMenu, ToggleCheck, &Minimize to Tray
+        node := settings.selectSingleNode("/hostMonitor/settings/minimizeToTray")
+        node.text := !node.text
+        if node.text
+            Menu, SettingsMenu, Enable, &Start Minimized
+        else
+            Menu, SettingsMenu, Disable, &Start Minimized
+    }
+    else if (A_ThisMenuItem == "&Start Minimized"){
+        Menu, SettingsMenu, ToggleCheck, &Start Minimized
+        node := settings.selectSingleNode("/hostMonitor/settings/startMinimized")
         node.text := !node.text
     }
     else if (A_ThisMenuItem == "Change GUI &Rows"){
@@ -485,6 +528,11 @@ SettingsMenuHandler:
     if reloadScript
         Reload
     return
+
+TrayMenuHandler:
+    if (A_ThisMenuItem == "&Show GUI"){
+        Gui, Show
+    }
 
 UpdateSB:
     scanTimer--
